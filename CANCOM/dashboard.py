@@ -99,7 +99,7 @@ def main():
             print(f"\033[11;1H" + "━" * 68)
 
         except (can.CanOperationError, OSError):
-            # Handle "Network is down" without crashing
+    
             print("\033[12;1H\033[K[!] CAN Network Disconnected. Reconnecting...")
             if bus:
                 try: bus.shutdown()
