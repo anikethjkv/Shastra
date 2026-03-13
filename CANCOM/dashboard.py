@@ -7,6 +7,7 @@ import subprocess
 INTERFACE = 'can0'
 BITRATE = 250000 
 
+# Multipliers from documentation
 SCALES = {
     "voltage": 32.0, 
     "current": 32.0,
@@ -14,7 +15,13 @@ SCALES = {
     "temp": 1.0
 }
 
-# --- LABEL MAPPINGS FROM DOCUMENTATION ---
+# --- LABEL MAPPINGS ---
+FLAGS1_LABELS = {
+    0: "Brake", 1: "Cutout", 2: "Run Request", 3: "Pedal", 4: "Regen", 5: "Walk", 
+    6: "Walk Start", 7: "Throttle", 8: "Reverse", 9: "Interlock Off", 
+    10: "Pedal Ramp", 11: "Gate Req", 12: "Gate En", 13: "Boost", 14: "Anti-Theft", 15: "Free Wheel"
+}
+
 FAULTS1_LABELS = {
     0: "Avg OverVolt", 1: "Avg Phase OverCurr", 2: "Curr Sens Calib", 3: "Curr Sens OverCurr",
     4: "Contr OverTemp", 5: "Motor Hall", 6: "Avg Motor OverTemp", 7: "POST Static",
@@ -38,12 +45,13 @@ WARNINGS1_LABELS = {
     11: "Low SOC Fold", 12: "High SOC Fold", 13: "I2T Overload", 14: "Low Temp Fold"
 }
 
-# --- CORE FUNCTIONS ---
+# --- SYSTEM HELPERS ---
 def setup_can_interface():
-    """Checks and automatically enables can0 if it's down."""
+    """Automatically enables can0 at 250000 bitrate if it is off."""
     try:
         result = subprocess.run(['ip', 'link', 'show', INTERFACE], capture_output=True, text=True)
         if "UP" not in result.stdout:
+            # Documentation setup commands
             subprocess.run(['sudo', 'ip', 'link', 'set', INTERFACE, 'down'], check=False)
             subprocess.run(['sudo', 'ip', 'link', 'set', INTERFACE, 'type', 'can', 'bitrate', str(BITRATE)], check=True)
             subprocess.run(['sudo', 'ip', 'link', 'set', INTERFACE, 'up'], check=True)
@@ -52,21 +60,22 @@ def setup_can_interface():
         return False
 
 def decode_le(data_chunk, signed=True):
-    """Little Endian decoding as per documentation."""
+    """Decodes little endian data from CAN packet."""
     return int.from_bytes(data_chunk, byteorder='little', signed=signed)
 
 def get_active_bits(val, mapping):
-    """Returns only active flags. Strict zero-check to prevent false positives."""
+    """Returns list of active labels. Only triggers if bit is high (1)."""
     if val <= 0: return []
     return [desc for bit, desc in mapping.items() if (val >> bit) & 1]
 
 def main():
     os.system('clear')
+    # Initialize telemetry with 0.0 values
     telemetry = {
         "v": 0.0, "i": 0.0, "soc": 0, "pwr": 0, "rpm": 0, "speed": 0.0,
         "c_temp": 0, "m_temp": 0, "pA_v": 0.0, "pB_v": 0.0, "pC_v": 0.0,
         "pA_i": 0.0, "pB_i": 0.0, "pC_i": 0.0,
-        "f1": 0, "f2": 0, "f3": 0, "w1": 0, "w2": 0
+        "f1": 0, "f2": 0, "f3": 0, "w1": 0, "w2": 0, "flags": 0
     }
 
     bus = None
@@ -74,7 +83,7 @@ def main():
         try:
             if bus is None:
                 if not setup_can_interface():
-                    print("\033[1;1H\033[K[!] CAN Hardware not found. Retrying...")
+                    print("\033[1;1H\033[K[!] CAN Interface Error. Retrying...")
                     time.sleep(2)
                     continue
                 bus = can.interface.Bus(channel=INTERFACE, interface='socketcan')
@@ -82,40 +91,40 @@ def main():
             msg = bus.recv(timeout=0.1)
             if not msg: continue
 
-            # TPDO Mapping (IDs 0x1AA - 0x6AA)
-            if msg.arbitration_id == 0x1AA:
+            # --- TPDO DECODING LOGIC ---
+            if msg.arbitration_id == 0x1AA: # TPDO 1
                 telemetry["c_temp"] = decode_le(msg.data[2:4])
-            elif msg.arbitration_id == 0x2AA:
+                telemetry["flags"]  = decode_le(msg.data[4:6], signed=False)
+            elif msg.arbitration_id == 0x2AA: # TPDO 2
                 telemetry["pwr"]    = decode_le(msg.data[0:2])
                 telemetry["speed"]  = decode_le(msg.data[2:4]) / SCALES["speed"]
                 telemetry["rpm"]    = decode_le(msg.data[4:6])
                 telemetry["m_temp"] = decode_le(msg.data[6:8])
-            elif msg.arbitration_id == 0x3AA:
+            elif msg.arbitration_id == 0x3AA: # TPDO 3
                 telemetry["v"]      = decode_le(msg.data[0:2]) / SCALES["voltage"]
                 telemetry["i"]      = decode_le(msg.data[2:4]) / SCALES["current"]
                 telemetry["soc"]    = decode_le(msg.data[4:6], signed=False)
-            elif msg.arbitration_id == 0x4AA:
+            elif msg.arbitration_id == 0x4AA: # TPDO 4
                 telemetry["pA_v"]   = decode_le(msg.data[0:2]) / SCALES["voltage"]
                 telemetry["pB_v"]   = decode_le(msg.data[2:4]) / SCALES["voltage"]
                 telemetry["pC_v"]   = decode_le(msg.data[4:6]) / SCALES["voltage"]
-            elif msg.arbitration_id == 0x5AA:
+            elif msg.arbitration_id == 0x5AA: # TPDO 5
                 telemetry["pA_i"]   = decode_le(msg.data[0:2]) / SCALES["current"]
                 telemetry["pB_i"]   = decode_le(msg.data[2:4]) / SCALES["current"]
                 telemetry["pC_i"]   = decode_le(msg.data[4:6]) / SCALES["current"]
                 telemetry["f1"]     = decode_le(msg.data[6:8], signed=False)
-            elif msg.arbitration_id == 0x6AA:
+            elif msg.arbitration_id == 0x6AA: # TPDO 6
                 telemetry["f2"]     = decode_le(msg.data[0:2], signed=False)
                 telemetry["f3"]     = decode_le(msg.data[2:4], signed=False)
                 telemetry["w1"]     = decode_le(msg.data[4:6], signed=False)
-                telemetry["w2"]     = decode_le(msg.data[6:8], signed=False)
 
-            # Compile all active issues
-            all_faults = get_active_bits(telemetry["f1"], FAULTS1_LABELS) + \
-                         get_active_bits(telemetry["f2"], FAULTS2_LABELS) + \
-                         get_active_bits(telemetry["f3"], FAULTS3_LABELS)
+            # --- UI PROCESSING ---
+            active_flags = get_active_bits(telemetry["flags"], FLAGS1_LABELS)
+            all_faults = (get_active_bits(telemetry["f1"], FAULTS1_LABELS) + 
+                          get_active_bits(telemetry["f2"], FAULTS2_LABELS) + 
+                          get_active_bits(telemetry["f3"], FAULTS3_LABELS))
             all_warns  = get_active_bits(telemetry["w1"], WARNINGS1_LABELS)
 
-            # UI Refresh
             print(f"\033[1;1H", end="")
             print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             print(f"                ASI BAC2000 SYSTEM MONITOR                    ")
@@ -126,6 +135,7 @@ def main():
             print(f"\033[K           I: {telemetry['pA_i']:.1f}, {telemetry['pB_i']:.1f}, {telemetry['pC_i']:.1f}")
             print(f"\033[K [TEMPS]   Contr: {telemetry['c_temp']}°C | Motor: {telemetry['m_temp']}°C")
             print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(f"\033[K [FLAGS]   {', '.join(active_flags) if active_flags else 'None'}")
             print(f"\033[K [FAULTS]  \033[91m{', '.join(all_faults) if all_faults else 'None'}\033[0m")
             print(f"\033[K [WARNS]   \033[93m{', '.join(all_warns) if all_warns else 'None'}\033[0m")
             print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
