@@ -129,23 +129,26 @@ sudo pip3 install gpsd-py3 --break-system-packages
 sudo apt install python3-gps python3-gpiozero i2c-tools -y
 
 
+Arudino CAN id: 0x40
+Raspberry pi CAN id: 0x41
+Motor Controller CAN id: 0x42
 # Pinout for Arduino Uno
 
 1) HW184 CAN - Module Pinouts
  
-                PIN ->  Arduino Pin
-		VCC ->	5V	
-                GND ->	GND	
- 		CS  ->	D10	SPI Chip Select	
-          SI (MOSI) ->	D11	SPI Data In	
-          SO (MISO) ->	D12	SPI Data Out	
-               SCK  ->	D13	SPI Clock	
-	       INT  ->	D9	Interrupt 0
+		PIN         ->  Arduino Pin
+		VCC         ->	5V	
+		GND         ->	GND	
+		CS          ->	D10	SPI Chip Select	
+		SI (MOSI)   ->	D11	SPI Data In	
+		SO (MISO)   ->	D12	SPI Data Out	
+		SCK         ->	D13	SPI Clock	
+		INT         ->	D9	Interrupt 0
 
 2) 4 Channel Relay - 
 
 		PIN      ->      Arduino Pin    -> Use of Relay
-		VCC      ->      5V     	
+		VCC      ->      5V
 		GND      ->      GND
 		IN1      ->      A5		-> Left Indicator
 		IN2      ->      A4		-> Right Indicator
@@ -156,21 +159,22 @@ sudo apt install python3-gps python3-gpiozero i2c-tools -y
 		
 		PIN      ->      Arduino Pin    -> Use of Relay
 		VCC      ->      5v
-		GND	 ->	 GND
-		IN1	 ->	 A1		-> HeadLight & Tail Lamp
-		IN2	 -> 	 A0	 	-> High Beam 
+		GND      ->      GND
+		IN1	     ->      A1             -> HeadLight & Tail Lamp
+		IN2	     ->      A0             -> High Beam 
 
 4) Inputs -
 
-		PIN	 ->	 Arduino Pin 	-> Use of Pin
-		Left I	 ->	 D7
-		Right I  ->	 D6
-		Horn 	 -> 	 D5
-		Brake 	 -> 	 D4
-Headlight / Tail light	 -> 	 D3
-	     High Beam   ->      D2
-		
+		PIN							->	 Arduino Pin 	-> Use of Pin
+		Left I	 					->	 D7
+		Right I						->	 D6
+		Horn 	 					-> 	 D5
+		Brake 	 					-> 	 D4
+		Headlight / Tail light		-> 	 D3
+		High Beam                   ->	 D2
 
+5) Remote start Relay (Optional)
+		Remote start rlay			->	D0
 
 
 
