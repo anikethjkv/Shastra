@@ -125,8 +125,8 @@ Map3 - Phase C current -  2004 (1D) - short - 32
 Map4 - faults - 2004(03) - short - 1
 
 TPDO 6 - Faults (cont.), Warnings
-Map1 - faults2 - 2004(2C) - short - 1
-Map2 - faults3 - 2003(2C) - short - 1
+Map1 - faults2 - 2005(2C) - short - 1
+Map2 - faults3 - 2004(2C) - short - 1
 Map3 - warnings - 2004(16) - short - 1
 Map4 - warnings2 - 2005(28) - short - 1
 
