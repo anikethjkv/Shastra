@@ -24,15 +24,15 @@ FLAGS1_LABELS = {
 
 FAULTS1_LABELS = {
     0: "Avg OverVolt", 1: "Avg Phase OverCurr", 2: "Curr Sens Calib", 3: "Curr Sens OverCurr",
-    4: "Contr OverTemp", 5: "Motor Hall", 6: "Avg Motor OverTemp", 7: "POST Static",
-    8: "Comm Timeout", 9: "Inst Phase OverCurr", 10: "Motor OverTemp", 11: "Throttle Range",
-    12: "Inst OverVolt", 13: "Internal Err", 14: "POST Dynamic", 15: "Inst UnderVolt"
+    4: "Contr OverTemp", 5: "Motor Hall Sensor Fault", 6: "Avg Controller Under Voltage", 7: "POST Static",
+    8: "Comm Timeout", 9: "Inst Phase OverCurr", 10: "Motor OverTemp", 11: "Throttle Outside Range",
+    12: "Inst Controller OverVolt", 13: "Internal Err", 14: "POST Dynamic", 15: "Inst Controller UnderVolt"
 }
 
 FAULTS2_LABELS = {
     0: "Param CRC", 1: "Curr Scale", 2: "Volt Scale", 3: "Headlight UnderV",
     4: "Param 3CRC", 5: "CAN Bus", 6: "Hall Stall", 8: "Param 2CRC",
-    9: "Hall vs Sensless", 12: "Remote CAN", 13: "Open Phase", 14: "Analog Brake Range"
+    9: "Hall vs Sensorless", 12: "Remote CAN", 13: "Open Phase", 14: "Analog Brake Range"
 }
 
 FAULTS3_LABELS = {
