@@ -1,3 +1,20 @@
+
+# To use git
+#to use Github from terminal
+# To start Git repo use the below Command to initalize
+git init
+# To Link a Cloud Repo to local repo use the Below command
+git remote add origin https://github.com/anikethjkv/Shastra.git
+# To add the Changes into your local repo and store it staging area use the below command
+git add .
+# Commit the Changes to a Local repo with the comment for the change done.
+git commit -m "Pushing First files"
+# This commands sets such that the next time I enter the username and password it stores them in the local machiene for further edits and Pushes
+git config --global credential.helper store
+#Push the changes to Cloud Repo main branch
+git push -u origin main
+
+
 # First We have to install the SQLlite Database Application to handel the data coming from the sensors and to store them somewhere.
 # Then it can be read by another script ment for displaying the values on the dash board
 
