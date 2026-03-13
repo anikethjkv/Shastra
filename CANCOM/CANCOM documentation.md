@@ -123,6 +123,8 @@ Map1 - Phase A current -  2004 (1B) - short - 32
 Map2 - Phase B current -  2004 (1C) - short - 32
 Map3 - Phase C current -  2004 (1D) - short - 32
 
+TPDO 6 - 
+
 # RPDO - Recieve Process Data Object. The Pi will Transmittes the Data to the Controller through CAN using These Packets.
 
 RPDO 1 - Controller Data - CAN ID - Scale (Multiplier)
