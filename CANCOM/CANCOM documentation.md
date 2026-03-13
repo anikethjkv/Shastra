@@ -118,12 +118,17 @@ Map2 - Phase B voltage - 2004 (1F) - short - 32
 Map3 - Phase C voltage - 2004 (20) - short - 32
 Map4 - Motor temp - 2004 (06) - short - 1
 
-TPDO 5 - Motor Phase Currents - CAN ID - Value Type - Scale (Multipler)
+TPDO 5 - Motor Phase Currents, Faults - CAN ID - Value Type - Scale (Multipler)
 Map1 - Phase A current -  2004 (1B) - short - 32
 Map2 - Phase B current -  2004 (1C) - short - 32
 Map3 - Phase C current -  2004 (1D) - short - 32
+Map4 - faults - 2004(03) - short - 1
 
-TPDO 6 - 
+TPDO 6 - Faults (cont.), Warnings
+Map1 - faults2 - 2004(2C) - short - 1
+Map2 - faults3 - 2003(2C) - short - 1
+Map3 - warnings - 2004(16) - short - 1
+Map4 - warnings2 - 2005(28) - short - 1
 
 # RPDO - Recieve Process Data Object. The Pi will Transmittes the Data to the Controller through CAN using These Packets.
 
@@ -149,6 +154,94 @@ bit 13 - remote can fault
 bit 14 - spare
 bit 15 - spare
 
+# Faults
+0: Averaged controller over voltage
+1: Averaged phase over current
+2: Current sensor calibration
+3: Current sensor over current
+4: Controller over temperature 
+5: motor Hall sensor fault
+6: Averaged motor over temperature
+7: POST static gating test
+8: Network communication timeout
+9: Instantaneous phase over current
+10: Motor over temparature
+11: Throttle voltage outside range
+12: Instantaneous controller over voltage
+13: Internal error
+14: POST dynamic gating test
+15: Instantaneous UnderVoltage
+
+# Faults 2
+0: Parameter CRC
+1: Current Scaling
+2: Voltage Scaling
+3: Headlight Undervoltage
+4: Parameter 3CRC
+5: CAN bus
+6: Hall Stall
+7: Bootloader - Not used
+8: Parameter 2CRC
+9: Hall vs Sensorless Position
+10: Spare
+11: Spare
+12: Remote CAN Fault
+13: Open Phase Fault
+14: Analog Brake Voltage out of Range
+
+# Faults 3
+0: Encoder Sin Voltage Range
+1: Encoder Cos Voltage Range
+2: Analog Input Saturation Fault
+3: Dual Throttle out of Range Bit 3
+4: Reserved Bit 4
+5: Reserved Bit 5
+6: Reserved Bit 6
+7: Reserved Bit 7
+8: Reserved Bit 8
+9: Reserved Bit 9
+10: Reserved Bit 10
+11: Reserved Bit 11
+12: Reserved Bit 12
+13: Reserved Bit 13
+14: Reserved Bit 14
+15: Reserved Bit 15
+
+# Warnings
+0: Communication Timeout
+1: Hall Sensor
+2: Hall Stall
+3: Wheel Speed Sensor
+4: CAN Bus
+5: Hall Illegal Sector
+6: Hall Illegal Transition
+7: Low Battery Voltage Foldback
+8: High Battery Voltage Foldback
+9: Motor Temperature Foldback
+10: Controller Over Temperature Foldback
+11: Low SOC Foldback
+12: High SOC Foldback
+13: I2T Overload Foldback
+14: Low temperature battery/Controller foldback
+15: Obsolete - BMS Communication timeout
+
+# Warnings 2
+0: Throlle out of range warning
+1: Dual speed sensor missing pulses warning
+2: Dual speed sensor no pulses warning
+3: Dynamic Flash Full Warning
+4: Dynamic Flash Read Error
+5: Dynamic Flash Write Error
+6: Parameters3 issing Warning
+7: Missed CAN Message
+8: High Battery Temperature FOldback
+9: ADC Saturation Warning
+10: Reserved
+11: Reserved
+12: Reserved
+13: Reserved
+14: Reserved
+15: Reserved
 
 
 
