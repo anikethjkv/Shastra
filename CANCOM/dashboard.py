@@ -5,7 +5,7 @@ import subprocess
 
 # --- CONFIGURATION FROM DOCUMENTATION ---
 INTERFACE = 'can0'
-BITRATE = 250000 
+BITRATE = 500000 
 
 # Multipliers from documentation
 SCALES = {
