@@ -7,7 +7,7 @@ import subprocess
 # --- Configuration ---
 ZMQ_ADDRESS = "tcp://localhost:5555"
 CAN_INTERFACE = "can0"
-CAN_BITRATE = "250000"
+CAN_BITRATE = "500000"
 
 # --- Setup ZMQ ---
 context = zmq.Context()
@@ -23,52 +23,114 @@ def setup_can():
     except Exception as e:
         print(f"CAN Setup Error: {e}")
 
-def send(name, value):
+def db_query(name, value=None, mode="update", command=None):
     try:
-        payload = {"name": name, "value": round(float(value), 4), "mode": "update"}
+        payload = {"name": name, "value": value, "mode": mode}
+        if command: payload["command"] = command
         socket.send_json(payload)
-        socket.recv_string()
+        return socket.recv_json() if command else socket.recv_string()
     except:
-        pass
+        return None
 
-# ... (get_initial_distance function remains same) ...
+def check_remote_start_request(bus):
+    reply = db_query("remote_start_cmd", command="get_value")
+    if reply and reply.get("status") == "OK":
+        cmd_state = int(float(reply.get("value", 0)))
+        msg = can.Message(arbitration_id=0x41, data=[cmd_state], is_extended_id=False)
+        try:
+            bus.send(msg)
+        except:
+            pass
 
+def parse_can(msg):
+    global total_distance_km, last_time
+    cid = msg.arbitration_id
+    data = msg.data
+
+    # --- ARDUINO SWITCHES (ID 0x40) ---
+    if cid == 0x40:
+        s = data[0]
+        db_query("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
+        db_query("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
+        db_query("sw_horn",    1.0 if (s & (1 << 2)) else 0.0)
+        db_query("sw_brake",   1.0 if (s & (1 << 3)) else 0.0)
+        db_query("sw_head",    1.0 if (s & (1 << 4)) else 0.0)
+        db_query("sw_hi_beam", 1.0 if (s & (1 << 5)) else 0.0)
+
+    # --- TPDO 1: Controller Data ---
+    elif cid == 0x1AA:
+        db_query("ctrl_status", data[0])
+        db_query("ctrl_temp", data[2])
+        db_query("ctrl_flags", struct.unpack('<H', data[4:6])[0])
+        db_query("ctrl_flags2", struct.unpack('<H', data[6:8])[0])
+
+    # --- TPDO 2: Motor Data ---
+    elif cid == 0x2AA:
+        db_query("motor_pwr", struct.unpack('<H', data[0:2])[0])
+        speed_kph = struct.unpack('<H', data[2:4])[0] / 256.0
+        db_query("vehicle_speed", speed_kph)
+
+        # Odometer Integration
+        now = time.time()
+        total_distance_km += speed_kph * ((now - last_time) / 3600.0)
+        last_time = now
+        db_query("total_distance", total_distance_km)
+
+        db_query("motor_rpm", struct.unpack('<H', data[4:6])[0])
+        db_query("motor_temp", data[6])
+
+    # --- TPDO 3: Battery Data ---
+    elif cid == 0x3AA:
+        db_query("batt_v", struct.unpack('<H', data[0:2])[0] / 32.0)
+        db_query("batt_i", struct.unpack('<H', data[2:4])[0] / 32.0)
+        db_query("batt_soc", data[4])
+        db_query("batt_temp", data[6])
+
+    # --- TPDO 4: Phase Voltages ---
+    elif cid == 0x4AA:
+        db_query("phase_v_a", struct.unpack('<h', data[0:2])[0] / 32.0)
+        db_query("phase_v_b", struct.unpack('<h', data[2:4])[0] / 32.0)
+        db_query("phase_v_c", struct.unpack('<h', data[4:6])[0] / 32.0)
+
+    # --- TPDO 5: Phase Currents & Faults ---
+    elif cid == 0x5AA:
+        db_query("phase_i_a", struct.unpack('<h', data[0:2])[0] / 32.0)
+        db_query("phase_i_b", struct.unpack('<h', data[2:4])[0] / 32.0)
+        db_query("phase_i_c", struct.unpack('<h', data[4:6])[0] / 32.0)
+        db_query("faults", struct.unpack('<H', data[6:8])[0])
+
+    # --- TPDO 6: Secondary Faults & Warnings ---
+    elif cid == 0x6AA:
+        db_query("faults2", struct.unpack('<h', data[0:2])[0])
+        db_query("faults3", struct.unpack('<h', data[2:4])[0])
+        db_query("warnings", struct.unpack('<h', data[4:6])[0])
+        db_query("warnings2", struct.unpack('<h', data[6:8])[0])
+
+# --- Main Setup & Loop ---
 setup_can()
 try:
     bus = can.interface.Bus(channel=CAN_INTERFACE, interface='socketcan')
 except:
     bus = None
 
-print("CAN Collector (Arduino + Motor Controller) Running...")
+# Odometer Sync
+initial_odo = db_query("total_distance", command="get_distance")
+total_distance_km = float(initial_odo.get("value", 0.0)) if initial_odo else 0.0
 
-def parse_can(msg):
-    cid = msg.arbitration_id
-    data = msg.data
-    
-    # --- ARDUINO DATA (ID 0x40 / 64 Decimal) ---
-    if cid == 0x40:
-        # I will fill this logic once you provide the data structure
-        # Example: val = struct.unpack('<h', data[0:2])[0]
-        print(f"Received Arduino Data: {data.hex()}")
-        pass
-
-    # --- MOTOR CONTROLLER DATA (ID 0x42 / 66 Decimal) ---
-    elif cid == 0x42:
-        # Update this logic based on how the 0x42 packet is structured
-        # (Is it a single packet or does it use TPDO offsets?)
-        send("mc_raw_data", data[0]) # Placeholder
-        pass
-
-    # --- ORIGINAL TPDO MAPPING (Keeping for compatibility) ---
-    elif cid in [0x1AA, 0x2AA, 0x3AA, 0x4AA, 0x5AA, 0x6AA]:
-        # ... (Existing TPDO parsing logic here) ...
-        pass
+last_time = time.time()
+last_db_check = time.time()
 
 try:
+    print("Full Telemetry CAN Collector Running...")
     while True:
         if bus:
             msg = bus.recv(timeout=0.01)
             if msg:
                 parse_can(msg)
+
+            # Check for Remote Start command every 500ms
+            if time.time() - last_db_check > 0.5:
+                check_remote_start_request(bus)
+                last_db_check = time.time()
 except KeyboardInterrupt:
     print("\nStopping...")
