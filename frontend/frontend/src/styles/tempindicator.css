@@ -1,0 +1,7 @@
+.temp-indicator {
+  color: white;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

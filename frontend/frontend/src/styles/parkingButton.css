@@ -1,0 +1,39 @@
+.parking-button {
+
+  width: 55px;
+  height: 55px;
+
+  border-radius: 50%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 22px;
+  font-weight: bold;
+
+  background: #222;
+  color: #bbb;
+
+  border: 2px solid #555;
+
+  cursor: pointer;
+
+  transition: all 0.25s ease;
+
+}
+
+/* ACTIVE HAZARD */
+
+.parking-button.active {
+
+  background: #ff9900;
+  color: black;
+
+  border-color: #ffb300;
+
+  box-shadow:
+    0 0 10px #ff9900,
+    0 0 20px #ff9900;
+
+}

@@ -1,0 +1,63 @@
+/* ===============================
+   SPLASH ROOT
+   =============================== */
+.splash {
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: black;
+  overflow: hidden;
+
+  touch-action: none;
+  user-select: none;
+}
+
+/* ===============================
+   SPLASH IMAGE
+   =============================== */
+.splash-image {
+  width: 92vw;
+  height: 92vh;
+  object-fit: contain;
+
+  /* Initial state */
+  transform: scale(1.05);
+  filter: blur(6px);
+
+  /* TOTAL duration includes HOLD */
+  animation: splashZoomHold 3.6s ease-out forwards;
+}
+
+/* ===============================
+   ANIMATION WITH FINAL HOLD
+   =============================== */
+@keyframes splashZoomHold {
+  /* Start: blurred + zoomed */
+  0% {
+    transform: scale(1.05);
+    filter: blur(6px);
+  }
+
+  /* Smooth zoom + focus */
+  65% {
+    transform: scale(1.02);
+    filter: blur(1px);
+  }
+
+  /* Animation completes */
+  80% {
+    transform: scale(1);
+    filter: blur(0);
+  }
+
+  /* HOLD — no movement, no effects */
+  100% {
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+

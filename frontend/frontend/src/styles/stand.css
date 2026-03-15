@@ -1,0 +1,65 @@
+/* =====================================
+   STAND INDICATOR
+===================================== */
+
+.stand-indicator {
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  transition: all 0.3s ease;
+
+}
+
+/* icon */
+
+.stand-icon {
+
+  width: 24px;
+  height: 24px;
+
+}
+
+/* text */
+
+.stand-text {
+
+  font-size: 12px;
+  letter-spacing: 1px;
+
+}
+
+/* STAND DOWN (warning) */
+
+.stand-indicator.down {
+
+  color: #ff3b3b;
+
+  animation: standBlink 1s infinite;
+
+}
+
+/* STAND UP (safe) */
+
+.stand-indicator.up {
+
+  color: #9aa4af;
+
+}
+
+/* warning blink */
+
+@keyframes standBlink {
+
+  0% { opacity: 1; }
+
+  50% { opacity: 0.4; }
+
+  100% { opacity: 1; }
+
+}
