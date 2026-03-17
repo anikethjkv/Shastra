@@ -173,8 +173,26 @@ Motor Controller CAN id: 0x42
 		Headlight / Tail light		-> 	 D3
 		High Beam                   ->	 D2
 
-5) Remote start Relay (Optional)
+5) Remote start Relay (Optional) -
+
 		Remote start rlay			->	D0
 
-
+6) Switches Documentation (Physical Switches Wireing to Arduino) -
+	The Wire Colours Might Differ depending on the Switches you buy. This is based on Our switches We used. You may have to Open up the Switches and Use a multimeter to Check the Continuity of the switches and check their Functioning.
+		
+		Left Side
+		
+		Wire Colour         -> 		utility						-> 		Arudino Pin Number
+		Black-Green 		-> 		Horn						-> 		D5
+		White 				-> 		Headlights and Taillights	-> 		D3
+		Blue 				->		HighBeam (Including Pass)	->		D2
+		Light Blue 			-> 		Right Indicator				->		D6
+		Red 				-> 		Left Indicator				->		D7
+		
+		Grey/Yellow/Black Shorted to Ground.
+		
+		Right Side
+		Wire Colour         -> 		utility						-> 		Motor Controller Pin
+		Red-Black			->		Igniton Switches
+		Red-Yellow			->		Boost Mode
 
