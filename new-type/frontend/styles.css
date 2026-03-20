@@ -141,6 +141,8 @@ html, body {
 .phase-label { font-size: 7px; font-weight: 600; letter-spacing: 1.2px; color: var(--text-dim); }
 .phase-value { font-size: 18px; font-weight: 800; line-height: 1.1; }
 .phase-value small { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+.phase-current { font-size: 12px; font-weight: 600; color: var(--text-dim); line-height: 1; }
+.phase-current small { font-size: 9px; }
 
 /* Gauges Row */
 .gauges-row {
@@ -208,6 +210,16 @@ html, body {
 .bms-item { font-size: 9px; font-weight: 600; color: var(--text-dim); }
 .bms-item span:last-child { font-weight: 800; color: var(--text); }
 .bms-key { letter-spacing: 0.5px; }
+
+/* BMS NTC Temps */
+.bms-ntc-row {
+    display: flex; align-items: center; gap: 3px; flex-wrap: wrap;
+}
+.bms-ntc-title { font-size: 8px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.8px; }
+.bms-ntc {
+    font-size: 8px; font-weight: 700; background: var(--bg); padding: 1px 4px;
+    border-radius: 3px; color: var(--text);
+}
 
 /* Tilt */
 .tilt-panel { display: flex; align-items: center; gap: 8px; justify-content: center; }
