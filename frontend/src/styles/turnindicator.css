@@ -1,0 +1,77 @@
+/* =========================
+   TURN INDICATOR BASE
+========================= */
+
+.turn-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0.2;
+  transition: all 0.3s ease;
+}
+
+/* =========================
+   ICON DESIGN
+========================= */
+
+.turn-icon {
+  width: 70px;
+  height: 70px;
+  fill: #ffb300;
+  transition: all 0.25s ease;
+}
+
+
+/* =========================
+   ACTIVE STATE (BMW STYLE)
+========================= */
+
+.turn-indicator.active {
+  opacity: 1;
+  animation: bmwBlink 0.75s infinite;
+}
+
+/* glow effect like TFT */
+
+.turn-indicator.active .turn-icon {
+  fill: #ffc107;
+  filter: drop-shadow(0 0 10px #ffb300)
+          drop-shadow(0 0 20px #ffb300);
+}
+
+
+/* =========================
+   BLINK ANIMATION
+========================= */
+
+@keyframes bmwBlink {
+
+  0% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  50% {
+    opacity: 0.15;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+}
+
+
+/* =========================
+   LEFT / RIGHT SPACING
+========================= */
+
+.turn-indicator.left {
+  padding-right: 4px;
+}
+
+.turn-indicator.right {
+  padding-left: 4px;
+}

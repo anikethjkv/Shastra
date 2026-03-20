@@ -1,0 +1,434 @@
+/* =====================================================
+   MAIN DASHBOARD LAYOUT
+===================================================== */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 12% 76% 12%;
+
+  height: 100vh;
+  width: 100vw;
+
+  overflow: hidden;
+
+  background: #e9edf2;
+  font-family: "Segoe UI", sans-serif;
+
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+/* Fade-in animation */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =====================================================
+   SIDEBARS
+===================================================== */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  background: #dfe4ea;
+  padding: 20px 0;
+}
+
+.indicator {
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: #9aa4af;
+  transition: color 0.3s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.indicator:hover {
+  transform: scale(1.05);
+}
+
+.indicator.active {
+  color: #00b96b;
+  font-weight: 600;
+}
+
+/* =====================================================
+   CENTER SECTION
+===================================================== */
+
+.center {
+
+  display: grid;
+
+  grid-template-rows:
+    auto
+    auto
+    1fr;
+
+  height: calc(100vh - 40px);
+
+  padding: 10px 20px;
+
+  background: #eef2f6;
+
+  border-radius: 18px;
+
+  margin: 20px 10px;
+
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.06),
+    inset 0 0 8px rgba(255, 255, 255, 0.4);
+
+  transition: all 0.3s ease;
+
+  position: relative;
+}
+
+/* =====================================================
+   MAP FULLSCREEN MODE
+===================================================== */
+
+.center.map-mode {
+
+  display: block;
+
+  padding: 0;
+
+}
+
+/* =====================================================
+   LOGO
+===================================================== */
+
+.center-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.dashboard-logo {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  opacity: 0;
+  animation: logoFade 1.5s ease forwards;
+}
+
+@keyframes logoFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =====================================================
+   PHASE VOLTAGES (U V W)
+===================================================== */
+
+.phase-row {
+
+  display: grid;
+
+  grid-template-columns: 1fr 1fr 1fr;
+
+  justify-items: center;
+
+  align-items: center;
+
+  margin-top: 15px;
+  margin-bottom: -25px;
+
+}
+
+.phase-voltage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.phase-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.phase-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* =====================================================
+   GAUGE ROW (RPM | Battery | Speed)
+===================================================== */
+
+.center-main {
+
+  display: grid;
+
+  grid-template-columns: 1fr 1fr 1fr;
+
+  align-items: center;
+  justify-items: center;
+
+  height: auto;
+
+  margin-top: -10px;
+
+}
+
+.rpm,
+.battery,
+.speed {
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  height: 100%;
+}
+
+.rpm svg,
+.speed svg {
+  height: 140px;
+}
+
+.battery {
+  transform: translateY(5px);
+}
+
+/* =====================================================
+   PARKING BUTTON
+===================================================== */
+
+.parking-container {
+
+  position: absolute;
+
+  bottom: 25px;
+
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+/* =====================================================
+   TEMPERATURE INDICATOR
+===================================================== */
+
+.temp-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.temp-icon {
+  width: 22px;
+  height: 22px;
+  transition: color 0.3s ease, filter 0.3s ease;
+}
+
+.temp-indicator {
+  color: #00c48c;
+}
+
+.temp-indicator.yellow {
+  color: #f5b301;
+}
+
+.temp-indicator.overheat {
+  color: #ff3b3b;
+  filter: drop-shadow(0 0 6px rgba(255, 59, 59, 0.6));
+}
+
+/* =====================================================
+   MAP DISPLAY
+===================================================== */
+
+.map-full {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.map-frame-full {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 18px;
+}
+
+.map-speed-overlay {
+
+  position: absolute;
+
+  bottom: 30px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+
+  padding: 16px 30px;
+
+  border-radius: 20px;
+
+  text-align: center;
+
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    inset 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.map-speed-value {
+  font-size: 40px;
+  font-weight: 700;
+  color: #1f2933;
+}
+
+.map-speed-unit {
+  font-size: 14px;
+  color: #6b7280;
+  letter-spacing: 1px;
+}
+
+/* =====================================================
+   NETWORK SIGNAL
+===================================================== */
+
+.network-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.signal-bars span {
+  width: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.signal-bars span:nth-child(1) { height: 6px; }
+.signal-bars span:nth-child(2) { height: 10px; }
+.signal-bars span:nth-child(3) { height: 14px; }
+.signal-bars span:nth-child(4) { height: 18px; }
+
+.level-1 span:nth-child(-n+1),
+.level-2 span:nth-child(-n+2),
+.level-3 span:nth-child(-n+3),
+.level-4 span:nth-child(-n+4) {
+  background: #00c48c;
+}
+
+.level-0 span {
+  background: #e5e7eb;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 900px) {
+
+  .center-main {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .sidebar {
+    display: none;
+  }
+/* GPS indicator */
+/* ===================================
+   EV STYLE GPS INDICATOR
+=================================== */
+
+.gps-indicator {
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+}
+
+/* GPS icon */
+
+.gps-icon {
+
+  width: 26px;
+  height: 26px;
+
+  color: #9aa4af;
+
+  transition: all 0.25s ease;
+
+}
+
+/* hover animation */
+
+.indicator:hover .gps-icon {
+
+  transform: scale(1.15);
+
+}
+
+/* active navigation */
+
+.indicator.active .gps-icon {
+
+  color: #00c48c;
+
+  filter: drop-shadow(0 0 6px rgba(0,196,140,0.6));
+
+}
+}.gps-icon {
+
+  width: 26px;
+  height: 26px;
+
+  color: #9aa4af;
+
+  transition: all 0.25s ease;
+
+}
+
+.indicator:hover .gps-icon {
+
+  transform: scale(1.15);
+
+}
+
+.indicator.active .gps-icon {
+
+  color: #00b96b;
+
+  filter: drop-shadow(0 0 6px rgba(0,185,107,0.6));
+
+}

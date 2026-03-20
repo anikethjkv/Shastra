@@ -1,0 +1,114 @@
+.battery-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ===============================
+   HVS VOLTAGE DISPLAY
+=============================== */
+
+.battery-voltage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* HVS label */
+
+.voltage-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+
+  color: #ff3b3b;
+}
+
+/* Voltage value */
+
+.voltage-value {
+  font-size: 18px;
+  font-weight: 700;
+
+  color: #ff3b3b;
+
+  text-shadow:
+    0 0 6px rgba(255,0,0,0.6),
+    0 0 12px rgba(255,0,0,0.4);
+}
+
+/* ===============================
+   MAIN BATTERY BODY
+=============================== */
+
+.battery-icon {
+  width: 50px;
+  height: 120px;
+  border: 3px solid #333;
+  border-radius: 10px;
+  position: relative;
+  background: #e9eef3;
+  overflow: hidden;
+}
+
+/* Battery cap */
+
+.battery-icon::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+}
+
+/* Battery fill */
+
+.battery-level {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+
+  background: linear-gradient(to top, #1ecb63, #49ff93);
+
+  transition: height 0.5s ease-in-out;
+}
+
+/* Charging bolt */
+
+.battery-bolt {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  font-size: 20px;
+  color: black;
+
+  animation: blink 1s infinite;
+}
+
+/* Battery percentage text */
+
+.battery-percentage {
+  margin-top: 10px;
+
+  font-size: 24px;
+  font-weight: bold;
+
+  color: black;
+}
+
+/* Charging animation */
+
+@keyframes blink {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
