@@ -19,12 +19,41 @@ def read_database():
         print("-" * 35)
         cursor.execute("SELECT sensor_name, reading_value FROM latest_readings")
         latest = cursor.fetchall()
+        # Build a lookup dict for quick access
+        readings = {}
         for row in latest:
+            readings[row[0]] = row[1]
             print(f"{row[0]:<20} | {row[1]:<10.2f}")
+
+        # 2. BMS Battery Data (dedicated section)
+        bms_keys = [
+            "bms_total_voltage", "bms_current", "bms_rem_cap",
+            "bms_full_cap", "bms_cycles", "bms_soc",
+            "bms_strings", "bms_ntc_count",
+            "bms_ntc1", "bms_ntc2", "bms_ntc3", "bms_ntc4", "bms_ntc5"
+        ]
+        bms_units = {
+            "bms_total_voltage": "V", "bms_current": "A",
+            "bms_rem_cap": "mAh", "bms_full_cap": "mAh",
+            "bms_cycles": "cycles", "bms_soc": "%",
+            "bms_strings": "S", "bms_ntc_count": "probes",
+            "bms_ntc1": "°C", "bms_ntc2": "°C", "bms_ntc3": "°C",
+            "bms_ntc4": "°C", "bms_ntc5": "°C"
+        }
+        has_bms = any(k in readings for k in bms_keys)
+        if has_bms:
+            print("\n=== BMS BATTERY DATA ===")
+            print(f"{'Parameter':<22} | {'Value':<10} | {'Unit'}")
+            print("-" * 45)
+            for key in bms_keys:
+                if key in readings:
+                    label = key.replace("bms_", "").replace("_", " ").title()
+                    unit = bms_units.get(key, "")
+                    print(f"{label:<22} | {readings[key]:<10.2f} | {unit}")
 
         print("\n")
 
-        # 2. Fetch Last 5 Historical Readings
+        # 3. Fetch Last 5 Historical Readings
         print("=== HISTORICAL DATA (Last 5 Logs) ===")
         print(f"{'Timestamp':<20} | {'Sensor':<10} | {'Value':<10}")
         print("-" * 45)

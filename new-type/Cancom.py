@@ -9,6 +9,14 @@ ZMQ_ADDRESS = "tcp://localhost:5555"
 CAN_INTERFACE = "can0"
 CAN_BITRATE = "500000"
 
+# BMS CAN IDs for battery data polling
+BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
+BMS_POLL_INTERVAL = 2.0  # seconds between BMS polls
+
+def decode_bms_temp(raw_value):
+    """Decode BMS NTC temperature: (raw - 2731) / 10.0 in °C."""
+    return (raw_value - 2731) / 10.0
+
 # --- Setup ZMQ ---
 context = zmq.Context()
 socket = context.socket(zmq.REQ)
@@ -41,6 +49,48 @@ def check_remote_start_request(bus):
             bus.send(msg)
         except:
             pass
+
+def poll_bms(bus):
+    """Send 0x5A request frames to BMS CAN IDs and decode responses."""
+    for can_id in BMS_IDS:
+        try:
+            req = can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False)
+            bus.send(req)
+            response = bus.recv(timeout=0.1)
+            if not response or response.arbitration_id != can_id or len(response.data) < 4:
+                continue
+            data = response.data
+
+            if can_id == 0x100:
+                volt_raw, curr_raw, rem_cap_raw = struct.unpack('>HhH', data[0:6])
+                db_query("bms_total_voltage", round(volt_raw * 0.01, 2))
+                db_query("bms_current", round(curr_raw * 0.01, 2))
+                db_query("bms_rem_cap", rem_cap_raw * 10)
+
+            elif can_id == 0x101:
+                full_cap_raw, cycles, rsoc = struct.unpack('>HhH', data[0:6])
+                db_query("bms_full_cap", full_cap_raw * 10)
+                db_query("bms_cycles", cycles)
+                db_query("bms_soc", rsoc)
+
+            elif can_id == 0x104:
+                db_query("bms_strings", data[0])
+                db_query("bms_ntc_count", data[1])
+
+            elif can_id == 0x105:
+                ntc1, ntc2, ntc3 = struct.unpack('>HHH', data[0:6])
+                db_query("bms_ntc1", round(decode_bms_temp(ntc1), 1))
+                db_query("bms_ntc2", round(decode_bms_temp(ntc2), 1))
+                db_query("bms_ntc3", round(decode_bms_temp(ntc3), 1))
+
+            elif can_id == 0x106:
+                if len(data) >= 2:
+                    db_query("bms_ntc4", round(decode_bms_temp(struct.unpack('>H', data[0:2])[0]), 1))
+                if len(data) >= 4:
+                    db_query("bms_ntc5", round(decode_bms_temp(struct.unpack('>H', data[2:4])[0]), 1))
+
+        except Exception:
+            continue
 
 def parse_can(msg):
     global total_distance_km, last_time
@@ -119,6 +169,7 @@ total_distance_km = float(initial_odo.get("value", 0.0)) if initial_odo else 0.0
 
 last_time = time.time()
 last_db_check = time.time()
+last_bms_poll = time.time()
 
 try:
     print("Full Telemetry CAN Collector Running...")
@@ -132,5 +183,10 @@ try:
             if time.time() - last_db_check > 0.5:
                 check_remote_start_request(bus)
                 last_db_check = time.time()
+
+            # Poll BMS battery data every ~2 seconds
+            if time.time() - last_bms_poll > BMS_POLL_INTERVAL:
+                poll_bms(bus)
+                last_bms_poll = time.time()
 except KeyboardInterrupt:
     print("\nStopping...")
