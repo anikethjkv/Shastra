@@ -62,6 +62,7 @@ void loop() {
     if (digitalRead(inputPins[i]) == LOW) {
       digitalWrite(relayPins[i], LOW);
       currentStates |= (1 << i);
+      // This is nothing but currentStates = currentStates | ( 1 << i). This is Left shifting number 1 by i times and oring with currentStates
     } else {
       digitalWrite(relayPins[i], HIGH);
     }
@@ -73,4 +74,11 @@ void loop() {
     lastSendTime = currentTime;
     CAN0.sendMsgBuf(TX_CAN_ID, 0, 1, &currentStates);
   }
+   // Byte order of Can is given by currentStatus
+  // 1   ->   Left Indicator
+  // 2   ->   Right Indicator
+  // 3   ->   Horn
+  // 4   ->   Brake Light
+  // 5   ->   Headlight and Tail light.
+  // 6   ->   High beam
 }
