@@ -117,14 +117,17 @@
                     <div class="phase-card phase-u">
                         <span class="phase-label">PHASE U</span>
                         <span class="phase-value" id="phase-u">0.0<small>V</small></span>
+                        <span class="phase-current" id="phase-i-u">0.0<small>A</small></span>
                     </div>
                     <div class="phase-card phase-v">
                         <span class="phase-label">PHASE V</span>
                         <span class="phase-value" id="phase-v">0.0<small>V</small></span>
+                        <span class="phase-current" id="phase-i-v">0.0<small>A</small></span>
                     </div>
                     <div class="phase-card phase-w">
                         <span class="phase-label">PHASE W</span>
                         <span class="phase-value" id="phase-w">0.0<small>V</small></span>
+                        <span class="phase-current" id="phase-i-w">0.0<small>A</small></span>
                     </div>
                 </div>
 
@@ -163,6 +166,10 @@
                         <span class="strip-label">FAULTS</span>
                         <span class="strip-value strip-ok" id="fault-status">NONE</span>
                     </div>
+                    <div class="strip-item">
+                        <span class="strip-label">WARNINGS</span>
+                        <span class="strip-value strip-ok" id="warn-status">NONE</span>
+                    </div>
                 </div>
             </main>
 
@@ -188,6 +195,18 @@
                         <div class="bms-row">
                             <span class="bms-item"><span class="bms-key">CUR</span> <span id="bms-current">0A</span></span>
                             <span class="bms-item"><span class="bms-key">CYC</span> <span id="bms-cycles">0</span></span>
+                        </div>
+                        <div class="bms-row">
+                            <span class="bms-item"><span class="bms-key">CAP</span> <span id="bms-cap">—</span></span>
+                            <span class="bms-item"><span class="bms-key">STR</span> <span id="bms-strings">—</span></span>
+                        </div>
+                        <div class="bms-ntc-row">
+                            <span class="bms-ntc-title">NTC</span>
+                            <span class="bms-ntc" id="ntc1">—</span>
+                            <span class="bms-ntc" id="ntc2">—</span>
+                            <span class="bms-ntc" id="ntc3">—</span>
+                            <span class="bms-ntc" id="ntc4">—</span>
+                            <span class="bms-ntc" id="ntc5">—</span>
                         </div>
                     </div>
                 </div>

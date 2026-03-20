@@ -15,6 +15,9 @@
         phaseU:       $('phase-u'),
         phaseV:       $('phase-v'),
         phaseW:       $('phase-w'),
+        phaseIU:      $('phase-i-u'),
+        phaseIV:      $('phase-i-v'),
+        phaseIW:      $('phase-i-w'),
         rpmValue:     $('rpm-value'),
         speedValue:   $('speed-value'),
         hvsVoltage:   $('hvs-voltage'),
@@ -28,6 +31,7 @@
         motorPower:   $('motor-power'),
         totalDist:    $('total-distance'),
         faultStatus:  $('fault-status'),
+        warnStatus:   $('warn-status'),
         motorTemp:    $('motor-temp'),
         ctrlTemp:     $('ctrl-temp'),
         battTemp:     $('batt-temp'),
@@ -38,6 +42,13 @@
         canStatus:    $('can-status'),
         bmsCurrent:   $('bms-current'),
         bmsCycles:    $('bms-cycles'),
+        bmsCap:       $('bms-cap'),
+        bmsStrings:   $('bms-strings'),
+        ntc1:         $('ntc1'),
+        ntc2:         $('ntc2'),
+        ntc3:         $('ntc3'),
+        ntc4:         $('ntc4'),
+        ntc5:         $('ntc5'),
         // Switch indicators
         indLeft:      $('ind-left'),
         indRight:     $('ind-right'),
@@ -84,6 +95,11 @@
         setHTML(el.phaseV, (d.phase_v_b || 0).toFixed(1) + '<small>V</small>');
         setHTML(el.phaseW, (d.phase_v_c || 0).toFixed(1) + '<small>V</small>');
 
+        /* Phase currents */
+        setHTML(el.phaseIU, (d.phase_i_a || 0).toFixed(1) + '<small>A</small>');
+        setHTML(el.phaseIV, (d.phase_i_b || 0).toFixed(1) + '<small>A</small>');
+        setHTML(el.phaseIW, (d.phase_i_c || 0).toFixed(1) + '<small>A</small>');
+
         /* RPM gauge */
         const rpm = Math.round(d.motor_rpm || 0);
         setText(el.rpmValue, rpm >= 1000 ? (rpm / 1000).toFixed(1) + 'k' : rpm);
@@ -113,6 +129,24 @@
         /* BMS extras */
         const cur = (d.bms_current || d.batt_i || 0).toFixed(1);
         setText(el.bmsCurrent, cur + 'A');
+
+        /* BMS capacity & strings */
+        const remCap = d.bms_rem_cap;
+        const fullCap = d.bms_full_cap;
+        if (remCap != null && fullCap != null && fullCap > 0) {
+            setText(el.bmsCap, Math.round(remCap) + '/' + Math.round(fullCap) + 'mAh');
+        } else if (remCap != null) {
+            setText(el.bmsCap, Math.round(remCap) + 'mAh');
+        }
+        if (d.bms_strings != null) setText(el.bmsStrings, Math.round(d.bms_strings) + 'S');
+
+        /* BMS NTC probe temps */
+        const ntcKeys = ['bms_ntc1','bms_ntc2','bms_ntc3','bms_ntc4','bms_ntc5'];
+        const ntcEls = [el.ntc1, el.ntc2, el.ntc3, el.ntc4, el.ntc5];
+        for (let i = 0; i < 5; i++) {
+            const v = d[ntcKeys[i]];
+            if (v != null) setText(ntcEls[i], v.toFixed(1) + '°');
+        }
         setText(el.bmsCycles, Math.round(d.bms_cycles || 0));
 
         /* Tilt */
@@ -127,14 +161,24 @@
         const dist = (d.total_distance || 0).toFixed(1);
         setHTML(el.totalDist, dist + '<small>km</small>');
 
-        /* Faults */
-        const faults = d.faults || 0;
-        if (faults > 0) {
+        /* Faults (combined from all sources) */
+        const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);
+        if (totalFaults > 0) {
             setText(el.faultStatus, 'ACTIVE');
             el.faultStatus.className = 'strip-value strip-fault';
         } else {
             setText(el.faultStatus, 'NONE');
             el.faultStatus.className = 'strip-value strip-ok';
+        }
+
+        /* Warnings (combined from all sources) */
+        const totalWarns = (d.warnings || 0) | (d.warnings2 || 0);
+        if (totalWarns > 0) {
+            setText(el.warnStatus, 'ACTIVE');
+            el.warnStatus.className = 'strip-value strip-warn';
+        } else {
+            setText(el.warnStatus, 'NONE');
+            el.warnStatus.className = 'strip-value strip-ok';
         }
 
         /* Temperatures */

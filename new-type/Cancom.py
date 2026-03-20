@@ -133,14 +133,15 @@ def parse_can(msg):
     elif cid == 0x3AA:
         db_query("batt_v", struct.unpack('<H', data[0:2])[0] / 32.0)
         db_query("batt_i", struct.unpack('<H', data[2:4])[0] / 32.0)
-        db_query("batt_soc", data[4])
-        db_query("batt_temp", data[6])
+        db_query("batt_soc", struct.unpack('<H', data[4:6])[0])
+        db_query("batt_temp", struct.unpack('<H', data[6:8])[0])
 
-    # --- TPDO 4: Phase Voltages ---
+    # --- TPDO 4: Phase Voltages + Motor Temp ---
     elif cid == 0x4AA:
         db_query("phase_v_a", struct.unpack('<h', data[0:2])[0] / 32.0)
         db_query("phase_v_b", struct.unpack('<h', data[2:4])[0] / 32.0)
         db_query("phase_v_c", struct.unpack('<h', data[4:6])[0] / 32.0)
+        db_query("motor_temp2", struct.unpack('<h', data[6:8])[0])
 
     # --- TPDO 5: Phase Currents & Faults ---
     elif cid == 0x5AA:
