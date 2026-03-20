@@ -365,70 +365,30 @@
   .sidebar {
     display: none;
   }
-/* GPS indicator */
-/* ===================================
-   EV STYLE GPS INDICATOR
-=================================== */
+}
+
+/* =====================================================
+   GPS INDICATOR
+===================================================== */
 
 .gps-indicator {
-
   display: flex;
   align-items: center;
   justify-content: center;
-
 }
-
-/* GPS icon */
 
 .gps-icon {
-
   width: 26px;
   height: 26px;
-
   color: #9aa4af;
-
   transition: all 0.25s ease;
-
 }
-
-/* hover animation */
 
 .indicator:hover .gps-icon {
-
   transform: scale(1.15);
-
 }
 
-/* active navigation */
-
 .indicator.active .gps-icon {
-
   color: #00c48c;
-
-  filter: drop-shadow(0 0 6px rgba(0,196,140,0.6));
-
-}
-}.gps-icon {
-
-  width: 26px;
-  height: 26px;
-
-  color: #9aa4af;
-
-  transition: all 0.25s ease;
-
-}
-
-.indicator:hover .gps-icon {
-
-  transform: scale(1.15);
-
-}
-
-.indicator.active .gps-icon {
-
-  color: #00b96b;
-
-  filter: drop-shadow(0 0 6px rgba(0,185,107,0.6));
-
+  filter: drop-shadow(0 0 6px rgba(0, 196, 140, 0.6));
 }
