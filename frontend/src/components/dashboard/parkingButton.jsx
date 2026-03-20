@@ -1,4 +1,4 @@
-import "../../styles/parkingbutton.css";
+import "../../styles/parkingButton.css";
 
 export default function ParkingButton({ hazard, setHazard }) {
   return (
