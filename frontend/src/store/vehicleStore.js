@@ -223,7 +223,9 @@ export const useVehicleStore = create((set, get) => ({
 
   fetchTelemetry: async () => {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL + "?t=" + Date.now(), {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const d = await res.json();
 

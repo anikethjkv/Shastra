@@ -10,6 +10,7 @@ socket.bind("tcp://*:5555")
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
+    conn.execute("PRAGMA journal_mode=WAL")  # Allow concurrent reads from api_server
     cursor = conn.cursor()
     # Table for Overwriting (Latest values)
     cursor.execute("CREATE TABLE IF NOT EXISTS latest_readings (sensor_name TEXT UNIQUE, reading_value REAL)")
