@@ -1,4 +1,4 @@
-import "../../styles/highbeam.css";
+import "../../styles/HighBeam.css";
 
 export default function HighBeamIndicator({ active, toggleHighBeam }) {
   return (
