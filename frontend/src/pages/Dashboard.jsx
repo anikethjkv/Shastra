@@ -84,6 +84,17 @@ export default function Dashboard() {
 
     <div className="dashboard">
 
+      {/* Terminal launch button — top left corner */}
+      {window.electronAPI && (
+        <button
+          className="terminal-btn"
+          onClick={() => window.electronAPI.openTerminal()}
+          title="Open Terminal"
+        >
+          &gt;_
+        </button>
+      )}
+
       {/* LEFT SIDEBAR */}
 
       <div className="sidebar">
