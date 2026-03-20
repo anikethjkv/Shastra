@@ -7,6 +7,7 @@ Reads latest_readings from SQLite and serves JSON + static frontend files.
 import json
 import sqlite3
 import os
+import datetime
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.db")
@@ -49,7 +50,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def _serve_debug(self):
         """Debug endpoint: shows all values + server timestamp for diagnosing stale data."""
-        import datetime
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
@@ -74,12 +74,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.wfile.write(payload.encode())
 
     def log_message(self, format, *args):
-        # Quiet logging — only errors
-        pass
+        pass  # Quiet logging
+
+
+class ReusableHTTPServer(HTTPServer):
+    allow_reuse_address = True
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)
+    server = ReusableHTTPServer(("0.0.0.0", PORT), DashboardHandler)
     print(f"Shastra Dashboard running → http://localhost:{PORT}")
     try:
         server.serve_forever()
