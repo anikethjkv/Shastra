@@ -1,0 +1,234 @@
+/* ═══════════════════════════════════════════════════════════════
+   Shastra EV Dashboard — Light Mode, 3-Column Layout
+   Optimized for 1024×600 (7" horizontal display on Raspberry Pi)
+   ═══════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg:         #eef1f5;
+    --card:       #ffffff;
+    --text:       #1a1d23;
+    --text-dim:   #6b7280;
+    --border:     #dfe3e8;
+    --teal:       #00897b;
+    --teal-light: #e0f2f1;
+    --cyan:       #00acc1;
+    --green:      #2e7d32;
+    --green-light:#e8f5e9;
+    --amber:      #f57f17;
+    --amber-light:#fff8e1;
+    --red:        #d32f2f;
+    --red-light:  #ffebee;
+    --blue:       #1565c0;
+    --blue-light: #e3f2fd;
+    --font: 'Inter', -apple-system, sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 6px rgba(0,0,0,0.03);
+}
+
+html, body {
+    width: 1024px; height: 600px; overflow: hidden;
+    font-family: var(--font); background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased; user-select: none;
+}
+
+#dashboard { width: 1024px; height: 600px; display: flex; flex-direction: column; }
+
+/* ═══ TOP BAR ═══════════════════════════════════════════════ */
+#top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px; background: var(--card); border-bottom: 1px solid var(--border);
+    height: 42px; flex-shrink: 0;
+}
+.logo-area { display: flex; align-items: center; gap: 8px; }
+.logo-icon { display: flex; filter: drop-shadow(0 1px 3px rgba(0,150,136,0.2)); }
+.logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-size: 14px; font-weight: 800; letter-spacing: 1.5px; }
+.brand-sub { font-size: 8px; font-weight: 500; letter-spacing: 2px; color: var(--text-dim); }
+
+.mode-selector { display: flex; gap: 4px; }
+.mode-btn {
+    padding: 5px 18px; border: 2px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--card); font-family: var(--font); font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+}
+.mode-btn.active[data-mode="eco"]   { background: var(--green-light); color: var(--green); border-color: var(--green); }
+.mode-btn.active[data-mode="sport"] { background: var(--amber-light); color: var(--amber); border-color: var(--amber); }
+.mode-btn.active[data-mode="race"]  { background: var(--red-light);   color: var(--red);   border-color: var(--red); }
+.mode-btn:not(.active):hover { background: var(--bg); }
+
+.status-badges { display: flex; gap: 6px; }
+.badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+}
+.badge-bt { background: var(--blue-light); color: var(--blue); border: 1px solid rgba(21,101,192,0.15); }
+.badge-live { background: var(--red-light); color: var(--red); border: 1px solid rgba(211,47,47,0.15); }
+.dot { width: 5px; height: 5px; border-radius: 50%; }
+.dot-green { background: var(--green); }
+.dot-red { background: var(--red); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ═══ 3-COLUMN BODY ════════════════════════════════════════ */
+#body-row {
+    flex: 1; display: flex; gap: 6px; padding: 6px 8px; min-height: 0; overflow: hidden;
+}
+
+/* ═══ SIDEBARS (shared) ════════════════════════════════════ */
+#sidebar-left, #sidebar-right {
+    width: 140px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px;
+}
+.sidebar-section {
+    background: var(--card); border-radius: var(--radius-sm); padding: 6px 8px;
+    box-shadow: var(--shadow);
+}
+.sidebar-title {
+    font-size: 8px; font-weight: 700; letter-spacing: 1.8px; color: var(--text-dim);
+    margin-bottom: 4px;
+}
+
+/* ── Left: Indicator Grid ─────────────────────────────────── */
+.indicator-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+}
+.indicator {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 5px 2px; border-radius: 4px; background: var(--bg);
+    color: var(--text-dim); font-size: 7px; font-weight: 700; letter-spacing: 0.8px;
+    transition: all 0.2s;
+}
+.indicator.active {
+    background: var(--green-light); color: var(--green);
+}
+.indicator.active svg { color: var(--green); }
+
+/* ── Left: Smoke Sensor ───────────────────────────────────── */
+.smoke-status {
+    display: flex; align-items: center; gap: 8px;
+}
+.smoke-icon { color: var(--green); }
+.smoke-icon.alert { color: var(--red); }
+.smoke-label {
+    font-size: 12px; font-weight: 800; color: var(--green); letter-spacing: 1px;
+}
+.smoke-label.alert { color: var(--red); }
+
+/* ── Left: Temperatures ───────────────────────────────────── */
+.temp-list { display: flex; flex-direction: column; gap: 4px; }
+.temp-item {
+    display: flex; justify-content: space-between; align-items: center;
+}
+.temp-name { font-size: 8px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; }
+.temp-val { font-size: 13px; font-weight: 800; color: var(--text); }
+
+/* ═══ CENTER PANEL ═════════════════════════════════════════ */
+#center-panel {
+    flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+
+/* Phase Voltages */
+.phase-row { display: flex; gap: 4px; }
+.phase-card {
+    flex: 1; background: var(--card); border-radius: var(--radius-sm);
+    padding: 3px 8px; display: flex; flex-direction: column;
+    border-left: 3px solid transparent; box-shadow: var(--shadow);
+}
+.phase-u { border-left-color: var(--cyan); }
+.phase-v { border-left-color: var(--teal); }
+.phase-w { border-left-color: var(--green); }
+.phase-label { font-size: 7px; font-weight: 600; letter-spacing: 1.2px; color: var(--text-dim); }
+.phase-value { font-size: 18px; font-weight: 800; line-height: 1.1; }
+.phase-value small { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+/* Gauges Row */
+.gauges-row {
+    flex: 1; display: flex; align-items: stretch; gap: 0;
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; min-height: 0; max-height: 290px;
+}
+.gauge-card {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 2px 6px; position: relative;
+}
+.gauge-divider {
+    width: 1px; background: var(--border); align-self: stretch; margin: 12px 0;
+}
+.gauge-title {
+    font-size: 8px; font-weight: 700; letter-spacing: 2px; color: var(--text-dim);
+}
+.gauge-card canvas { display: block; max-width: 100%; }
+.gauge-readout {
+    display: flex; align-items: baseline; gap: 4px; margin-top: -4px;
+}
+.gauge-big { font-size: 28px; font-weight: 900; }
+.speed-big { font-size: 32px; }
+.gauge-unit { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; }
+
+/* Info Strip */
+.info-strip {
+    display: flex; gap: 4px; flex-shrink: 0;
+}
+.strip-item {
+    flex: 1; background: var(--card); border-radius: var(--radius-sm);
+    padding: 3px 8px; display: flex; flex-direction: column; box-shadow: var(--shadow);
+}
+.strip-label { font-size: 7px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-dim); }
+.strip-value { font-size: 14px; font-weight: 800; line-height: 1.2; }
+.strip-value small { font-size: 10px; font-weight: 600; color: var(--text-dim); }
+.strip-ok { color: var(--green); }
+.strip-warn { color: var(--amber); }
+.strip-fault { color: var(--red); }
+
+/* ═══ RIGHT SIDEBAR ════════════════════════════════════════ */
+/* Battery Panel */
+.battery-panel { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+.hvs-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.hvs-label { font-size: 9px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; }
+.hvs-val { font-size: 16px; font-weight: 800; color: var(--green); }
+
+.battery-visual { width: 100%; display: flex; justify-content: center; }
+.battery-icon-v {
+    width: 100%; height: 20px; border: 2px solid var(--text-dim);
+    border-radius: 3px; position: relative; overflow: hidden;
+}
+.battery-icon-v::after {
+    content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 10px; background: var(--text-dim); border-radius: 0 2px 2px 0;
+}
+.battery-fill-v {
+    height: 100%; width: 0%; border-radius: 1px;
+    background: linear-gradient(90deg, var(--green), #66bb6a); transition: width 0.6s;
+}
+.soc-row { display: flex; align-items: center; gap: 6px; }
+.soc-pct { font-size: 20px; font-weight: 900; }
+.soc-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.bms-row { display: flex; gap: 6px; width: 100%; }
+.bms-item { font-size: 9px; font-weight: 600; color: var(--text-dim); }
+.bms-item span:last-child { font-weight: 800; color: var(--text); }
+.bms-key { letter-spacing: 0.5px; }
+
+/* Tilt */
+.tilt-panel { display: flex; align-items: center; gap: 8px; justify-content: center; }
+.tilt-deg { font-size: 18px; font-weight: 800; }
+
+/* Connectivity */
+.conn-list { display: flex; flex-direction: column; gap: 4px; }
+.conn-item {
+    display: flex; align-items: center; gap: 5px; font-size: 10px;
+}
+.conn-item svg { color: var(--text-dim); flex-shrink: 0; }
+.conn-label { font-weight: 700; font-size: 9px; letter-spacing: 0.8px; color: var(--text-dim); }
+.conn-val { font-weight: 800; font-size: 10px; margin-left: auto; }
+.conn-val.online { color: var(--green); }
+.conn-val.offline { color: var(--red); }
+
+/* ═══ FOOTER ═══════════════════════════════════════════════ */
+#status-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: 24px; background: var(--card);
+    border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.footer-item { font-size: 9px; font-weight: 600; letter-spacing: 1px; color: var(--text-dim); }
+.footer-session { color: var(--teal); font-weight: 700; }
