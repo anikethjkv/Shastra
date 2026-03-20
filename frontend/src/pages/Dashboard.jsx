@@ -56,51 +56,22 @@ export default function Dashboard() {
   const activePage = useVehicleStore((state) => state.activePage);
   const setPage = useVehicleStore((state) => state.setPage);
 
+  const smokeDetected = useVehicleStore((state) => state.smokeDetected);
+
+  const fetchTelemetry = useVehicleStore((state) => state.fetchTelemetry);
+
   const leftSignal = hazard ? true : leftIndicator;
   const rightSignal = hazard ? true : rightIndicator;
 
-  /* STARTUP SWEEP */
-
+  /* LIVE TELEMETRY POLLING — replaces demo startup sweep */
   useEffect(() => {
+    // Initial fetch
+    fetchTelemetry();
 
-    let currentSpeed = 0;
-    setSpeed(0);
-
-    const startDelay = setTimeout(() => {
-
-      const sweepUp = setInterval(() => {
-
-        currentSpeed += 4;
-        setSpeed(currentSpeed);
-
-        if (currentSpeed >= modes[mode].maxSpeed) {
-
-          clearInterval(sweepUp);
-
-          const sweepDown = setInterval(() => {
-
-            currentSpeed -= 4;
-            setSpeed(currentSpeed);
-
-            if (currentSpeed <= 0) {
-
-              clearInterval(sweepDown);
-              setSpeed(52);
-
-            }
-
-          }, 20);
-
-        }
-
-      }, 20);
-
-    }, 800);
-
-    return () => clearTimeout(startDelay);
-
-  }, [mode, setSpeed, modes]);
-
+    // Poll every 500ms
+    const interval = setInterval(fetchTelemetry, 500);
+    return () => clearInterval(interval);
+  }, [fetchTelemetry]);
 
 
   let tempClass = "";
@@ -257,7 +228,7 @@ export default function Dashboard() {
           <TurnIndicator direction="right" active={rightSignal} />
         </IndicatorItem>
 
-        <IndicatorItem>SMOKE</IndicatorItem>
+        <IndicatorItem active={smokeDetected}>SMOKE</IndicatorItem>
 
         <IndicatorItem className={`temp-indicator ${tempClass}`}>
 
