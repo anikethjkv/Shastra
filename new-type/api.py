@@ -23,6 +23,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/data":
             self._serve_sensor_data()
+        elif self.path == "/api/debug":
+            self._serve_debug()
         else:
             super().do_GET()
 
@@ -38,6 +40,32 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             data = {}
 
         payload = json.dumps(data)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(payload.encode())
+
+    def _serve_debug(self):
+        """Debug endpoint: shows all values + server timestamp for diagnosing stale data."""
+        import datetime
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT sensor_name, reading_value FROM latest_readings ORDER BY sensor_name")
+            rows = cursor.fetchall()
+            conn.close()
+            data = {
+                "server_time": datetime.datetime.now().isoformat(),
+                "db_path": DB_PATH,
+                "values": {row[0]: row[1] for row in rows},
+                "count": len(rows),
+            }
+        except Exception as e:
+            data = {"error": str(e)}
+
+        payload = json.dumps(data, indent=2)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")

@@ -20,7 +20,23 @@ def decode_bms_temp(raw_value):
 # --- Setup ZMQ ---
 context = zmq.Context()
 socket = context.socket(zmq.REQ)
+socket.setsockopt(zmq.SNDTIMEO, 500)   # 500ms send timeout
+socket.setsockopt(zmq.RCVTIMEO, 500)   # 500ms recv timeout
+socket.setsockopt(zmq.LINGER, 0)
 socket.connect(ZMQ_ADDRESS)
+
+def _reconnect_zmq():
+    """Re-create the ZMQ socket after an error (REQ/REP requires strict alternation)."""
+    global socket
+    try:
+        socket.close()
+    except:
+        pass
+    socket = context.socket(zmq.REQ)
+    socket.setsockopt(zmq.SNDTIMEO, 500)
+    socket.setsockopt(zmq.RCVTIMEO, 500)
+    socket.setsockopt(zmq.LINGER, 0)
+    socket.connect(ZMQ_ADDRESS)
 
 def setup_can():
     try:
@@ -32,12 +48,15 @@ def setup_can():
         print(f"CAN Setup Error: {e}")
 
 def db_query(name, value=None, mode="update", command=None):
+    global socket
     try:
         payload = {"name": name, "value": value, "mode": mode}
         if command: payload["command"] = command
         socket.send_json(payload)
         return socket.recv_json() if command else socket.recv_string()
-    except:
+    except Exception as e:
+        print(f"[ZMQ ERROR] {name}={value}: {e} — reconnecting")
+        _reconnect_zmq()
         return None
 
 def check_remote_start_request(bus):
