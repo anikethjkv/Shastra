@@ -76,12 +76,10 @@ html, body {
     flex: 1; display: flex; gap: 6px; padding: 6px 8px; min-height: 0; overflow: hidden;
 }
 
-/* ═══ RIGHT COMBO SIDEBAR ════════════════════════════════════ */
+/* ═══ RIGHT SIDEBAR (One unified column) ════════════════════════════════════ */
 #sidebar-main {
-    width: 400px; flex-shrink: 0; display: flex; flex-direction: row; gap: 8px;
-}
-.sidebar-column {
-    flex: 1; display: flex; flex-direction: column; gap: 6px; justify-content: space-between;
+    width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+    justify-content: space-between;
 }
 .sidebar-section {
     background: var(--card); border-radius: var(--radius-sm); padding: 6px 8px;
