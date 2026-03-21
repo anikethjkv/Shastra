@@ -54,7 +54,7 @@ const Gauges = (() => {
             ctx.stroke();
 
             ctx.fillStyle = C.dim;
-            ctx.font = '600 9px Inter, sans-serif';
+            ctx.font = '600 14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(val, cx + Math.cos(angle) * labelR, cy + Math.sin(angle) * labelR);
@@ -162,7 +162,7 @@ const Gauges = (() => {
             ctx.stroke();
 
             ctx.fillStyle = C.dim;
-            ctx.font = '600 8px Inter, sans-serif';
+            ctx.font = '600 14px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(val, cx + Math.cos(angle) * lr, cy + Math.sin(angle) * lr);
