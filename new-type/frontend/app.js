@@ -6,8 +6,8 @@
 (() => {
     'use strict';
 
-    const POLL_MS = 50;
-    const API_URL = '/api/data';
+    const STREAM_URL = '/api/stream';
+    const fallbackData = '/api/data';
     const $ = id => document.getElementById(id);
 
     /* ── Cached DOM refs ──────────────────────────────────────── */
@@ -232,15 +232,22 @@
         });
     }
 
-    /* ── Fetch ────────────────────────────────────────────────── */
-    function fetchAndRender() {
-        fetch(API_URL)
-            .then(r => r.json())
-            .then(updateUI)
-            .catch(() => {
-                setText(el.connStatus, 'OFFLINE');
-                if (Object.keys(prev).length === 0) showDemoData();
-            });
+    /* ── SSE Stream ───────────────────────────────────────────── */
+    function connectStream() {
+        const source = new EventSource(STREAM_URL);
+        
+        source.onmessage = (e) => {
+            if (el.connStatus.textContent === 'OFFLINE') setText(el.connStatus, '100%');
+            const data = JSON.parse(e.data);
+            updateUI(data);
+        };
+        
+        source.onerror = () => {
+            setText(el.connStatus, 'OFFLINE');
+            source.close();
+            setTimeout(connectStream, 2000);
+            if (Object.keys(prev).length === 0) showDemoData();
+        };
     }
 
     /* ── Clock & session ──────────────────────────────────────── */
@@ -264,7 +271,9 @@
     Gauges.drawRPMGauge(rpmCanvas, 0, 5000);
     Gauges.drawTilt(tiltCanvas, 0, 0);
 
-    function tick() { updateTimers(); fetchAndRender(); }
-    tick();
-    setInterval(tick, POLL_MS);
+    setInterval(updateTimers, 1000);
+    updateTimers();
+    
+    // Connect to realtime server stream
+    connectStream();
 })();

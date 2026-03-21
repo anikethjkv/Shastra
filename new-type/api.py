@@ -8,7 +8,8 @@ import json
 import sqlite3
 import os
 import datetime
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+import time
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.db")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
@@ -24,22 +25,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/data":
             self._serve_sensor_data()
+        elif self.path == "/api/stream":
+            self._serve_sse()
         elif self.path == "/api/debug":
             self._serve_debug()
         else:
             super().do_GET()
 
-    def _serve_sensor_data(self):
+    def _get_db_data(self):
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute("SELECT sensor_name, reading_value FROM latest_readings")
             rows = cursor.fetchall()
             conn.close()
-            data = {row[0]: row[1] for row in rows}
+            return {row[0]: row[1] for row in rows}
         except:
-            data = {}
+            return {}
 
+    def _serve_sensor_data(self):
+        data = self._get_db_data()
         payload = json.dumps(data)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -48,22 +53,34 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload.encode())
 
-    def _serve_debug(self):
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT sensor_name, reading_value FROM latest_readings ORDER BY sensor_name")
-            rows = cursor.fetchall()
-            conn.close()
-            data = {
-                "server_time": datetime.datetime.now().isoformat(),
-                "count": len(rows),
-                "values": {row[0]: row[1] for row in rows},
-            }
-        except Exception as e:
-            data = {"error": str(e)}
+    def _serve_sse(self):
+        """Server-Sent Events: push data continuously without polling overhead."""
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Connection', 'keep-alive')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
 
-        payload = json.dumps(data, indent=2)
+        while True:
+            try:
+                data = self._get_db_data()
+                payload = json.dumps(data)
+                self.wfile.write(f"data: {payload}\n\n".encode())
+                self.wfile.flush()
+                time.sleep(0.05)  # 20 FPS updates
+            except Exception:
+                # Connection closed by client
+                break
+
+    def _serve_debug(self):
+        data = self._get_db_data()
+        info = {
+            "server_time": datetime.datetime.now().isoformat(),
+            "count": len(data),
+            "values": data,
+        }
+        payload = json.dumps(info, indent=2)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -75,12 +92,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         pass
 
 
-class ReusableHTTPServer(HTTPServer):
+class ReusableThreadingHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
 if __name__ == "__main__":
-    server = ReusableHTTPServer(("0.0.0.0", PORT), DashboardHandler)
+    server = ReusableThreadingHTTPServer(("0.0.0.0", PORT), DashboardHandler)
     print(f"Shastra Dashboard running → http://localhost:{PORT}")
     try:
         server.serve_forever()
