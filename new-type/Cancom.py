@@ -231,8 +231,8 @@ try:
 
         now = time.time()
 
-        # Flush SQLite every 250ms
-        if now - last_flush > 0.25:
+        # Flush SQLite every 50ms
+        if now - last_flush > 0.05:
             db_flush()
             last_flush = now
 

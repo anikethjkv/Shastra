@@ -6,7 +6,7 @@
 (() => {
     'use strict';
 
-    const POLL_MS = 1000;
+    const POLL_MS = 50;
     const API_URL = '/api/data';
     const $ = id => document.getElementById(id);
 
