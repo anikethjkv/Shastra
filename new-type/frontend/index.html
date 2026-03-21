@@ -46,65 +46,7 @@
         <!-- ═══════════ 3-COLUMN BODY ═══════════ -->
         <div id="body-row">
 
-            <!-- ── LEFT SIDEBAR: Indicators ──────────────── -->
-            <aside id="sidebar-left">
-                <!-- Switch Indicators -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">INDICATORS</div>
-                    <div class="indicator-grid">
-                        <div class="indicator" id="ind-left" title="Left Turn">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span>L</span>
-                        </div>
-                        <div class="indicator" id="ind-right" title="Right Turn">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10 7l5 5-5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span>R</span>
-                        </div>
-                        <div class="indicator" id="ind-horn" title="Horn">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-                            <span>HRN</span>
-                        </div>
-                        <div class="indicator" id="ind-brake" title="Brake">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="7" x2="12" y2="13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
-                            <span>BRK</span>
-                        </div>
-                        <div class="indicator" id="ind-head" title="Headlight">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.5-6.5l-1.4 1.4m-9.2 9.2l-1.4 1.4m0-12l1.4 1.4m9.2 9.2l1.4 1.4" stroke="currentColor" stroke-width="1.5"/></svg>
-                            <span>HEAD</span>
-                        </div>
-                        <div class="indicator" id="ind-hibeam" title="High Beam">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M2 12h3m14 0h3M12 2v3m0 14v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-                            <span>HI</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Smoke Sensor -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">SMOKE</div>
-                    <div class="smoke-status" id="smoke-status">
-                        <div class="smoke-icon" id="smoke-icon">
-                            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 22c-4.97 0-9-2.69-9-6v-1c0-2 1-3.5 2.5-4.5C4 8.5 3 6.5 3 4c0-.55.45-1 1-1s1 .45 1 1c0 2 1.5 3.5 3.5 4.5C10 7 12 5 12 2c0 3 2 5 3.5 6.5C17.5 6.5 19 5 19 3c0-.55.45-1 1-1s1 .45 1 1c0 2.5-1 4.5-2.5 6.5C20 10.5 21 12 21 14v1c0 3.31-4.03 6-9 6z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-                        </div>
-                        <span class="smoke-label" id="smoke-label">CLEAR</span>
-                    </div>
-                </div>
-
-                <!-- Temperatures -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">TEMPS</div>
-                    <div class="temp-list">
-                        <div class="temp-item">
-                            <span class="temp-name">MOTOR</span>
-                            <span class="temp-val" id="motor-temp">0°C</span>
-                        </div>
-                        <div class="temp-item">
-                            <span class="temp-name">CTRL</span>
-                            <span class="temp-val" id="ctrl-temp">0°C</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+            <!-- Left sidebar deleted; Center panel is now the first child -->
 
             <!-- ── CENTER: Gauges ────────────────────────── -->
             <main id="center-panel">
@@ -169,8 +111,68 @@
                 </div>
             </main>
 
-            <!-- ── RIGHT SIDEBAR: Battery / Tilt / GPS ───── -->
-            <aside id="sidebar-right">
+            <!-- ── RIGHT SIDEBAR: Combined Panel ───── -->
+            <aside id="sidebar-main">
+                <div class="sidebar-column">
+                    <!-- Switch Indicators -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">INDICATORS</div>
+                        <div class="indicator-grid">
+                            <div class="indicator" id="ind-left" title="Left Turn">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>L</span>
+                            </div>
+                            <div class="indicator" id="ind-right" title="Right Turn">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M10 7l5 5-5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>R</span>
+                            </div>
+                            <div class="indicator" id="ind-horn" title="Horn">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                                <span>HRN</span>
+                            </div>
+                            <div class="indicator" id="ind-brake" title="Brake">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="7" x2="12" y2="13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
+                                <span>BRK</span>
+                            </div>
+                            <div class="indicator" id="ind-head" title="Headlight">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.5-6.5l-1.4 1.4m-9.2 9.2l-1.4 1.4m0-12l1.4 1.4m9.2 9.2l1.4 1.4" stroke="currentColor" stroke-width="1.5"/></svg>
+                                <span>HEAD</span>
+                            </div>
+                            <div class="indicator" id="ind-hibeam" title="High Beam">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M2 12h3m14 0h3M12 2v3m0 14v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                                <span>HI</span>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Smoke Sensor -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">SMOKE</div>
+                        <div class="smoke-status" id="smoke-status">
+                            <div class="smoke-icon" id="smoke-icon">
+                                <svg viewBox="0 0 24 24" width="32" height="32"><path d="M12 22c-4.97 0-9-2.69-9-6v-1c0-2 1-3.5 2.5-4.5C4 8.5 3 6.5 3 4c0-.55.45-1 1-1s1 .45 1 1c0 2 1.5 3.5 3.5 4.5C10 7 12 5 12 2c0 3 2 5 3.5 6.5C17.5 6.5 19 5 19 3c0-.55.45-1 1-1s1 .45 1 1c0 2.5-1 4.5-2.5 6.5C20 10.5 21 12 21 14v1c0 3.31-4.03 6-9 6z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                            </div>
+                            <span class="smoke-label" id="smoke-label">CLEAR</span>
+                        </div>
+                    </div>
+    
+                    <!-- Temperatures -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">TEMPS</div>
+                        <div class="temp-list">
+                            <div class="temp-item">
+                                <span class="temp-name">MOTOR</span>
+                                <span class="temp-val" id="motor-temp">0°C</span>
+                            </div>
+                            <div class="temp-item">
+                                <span class="temp-name">CTRL</span>
+                                <span class="temp-val" id="ctrl-temp">0°C</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-column">
                 <!-- Battery / SOC -->
                 <div class="sidebar-section">
                     <div class="sidebar-title">BATTERY</div>
@@ -236,6 +238,7 @@
                             <span class="conn-val" id="can-status">—</span>
                         </div>
                     </div>
+                </div>
                 </div>
             </aside>
         </div>
