@@ -150,6 +150,8 @@ def parse_can(msg):
         rpm   = decode_le(d[4:6])
         mtemp = decode_le(d[6:8])
 
+        print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM: {rpm} | SPEED: {speed}")
+
         db_write("motor_pwr", pwr)
         db_write("vehicle_speed", round(speed, 2))
         db_write("motor_rpm", rpm)
