@@ -62,16 +62,27 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
 
+        # Keep connection open for blazing fast reads, isolation_level=None prevents stale snapshots
+        try:
+            conn = sqlite3.connect(DB_PATH, isolation_level=None)
+            conn.execute("PRAGMA journal_mode=WAL")
+        except:
+            return
+
         while True:
             try:
-                data = self._get_db_data()
+                cursor = conn.cursor()
+                cursor.execute("SELECT sensor_name, reading_value FROM latest_readings")
+                data = {row[0]: row[1] for row in cursor.fetchall()}
+                
                 payload = json.dumps(data)
                 self.wfile.write(f"data: {payload}\n\n".encode())
                 self.wfile.flush()
                 time.sleep(0.05)  # 20 FPS updates
             except Exception:
-                # Connection closed by client
                 break
+        
+        conn.close()
 
     def _serve_debug(self):
         data = self._get_db_data()

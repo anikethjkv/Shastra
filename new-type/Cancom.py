@@ -36,20 +36,26 @@ db_conn.execute("PRAGMA synchronous=NORMAL")
 db_conn.execute("CREATE TABLE IF NOT EXISTS latest_readings (sensor_name TEXT UNIQUE, reading_value REAL)")
 db_conn.commit()
 
+sensor_cache = {}
+
 def db_write(name, value):
-    """Write sensor value directly to SQLite."""
-    try:
-        db_conn.execute(
-            "INSERT INTO latest_readings (sensor_name, reading_value) VALUES (?, ?) "
-            "ON CONFLICT(sensor_name) DO UPDATE SET reading_value=excluded.reading_value",
-            (name, float(value))
-        )
-    except Exception as e:
-        print(f"[DB ERROR] {name}={value}: {e}")
+    """Buffer sensor value in memory."""
+    sensor_cache[name] = float(value)
 
 def db_flush():
-    """Commit batched writes to disk."""
+    """Batch write only the newest values to SQLite, drastically reducing disk IO."""
+    if not sensor_cache:
+        return
     try:
+        # Prepare batch payload
+        records = [(k, v) for k, v in sensor_cache.items()]
+        sensor_cache.clear()
+        
+        db_conn.executemany(
+            "INSERT INTO latest_readings (sensor_name, reading_value) VALUES (?, ?) "
+            "ON CONFLICT(sensor_name) DO UPDATE SET reading_value=excluded.reading_value",
+            records
+        )
         db_conn.commit()
     except Exception as e:
         print(f"[DB COMMIT ERROR]: {e}")
