@@ -188,43 +188,53 @@ html, body {
 .strip-fault { color: var(--red); }
 
 /* ═══ RIGHT SIDEBAR ════════════════════════════════════════ */
-/* Battery Panel */
-.battery-panel { display: flex; flex-direction: column; gap: 5px; align-items: center; }
-.hvs-row { display: flex; align-items: center; gap: 6px; width: 100%; }
-.hvs-label { font-size: 12px; font-weight: 700; color: var(--text-dim); letter-spacing: 1.5px; }
-.hvs-val { font-size: 20px; font-weight: 800; color: var(--green); }
+/* ── Battery Strip (Horizontal in Main Pane) ───────────────────────────── */
+.battery-strip {
+    display: flex; gap: 16px; align-items: center; justify-content: space-between;
+    background: var(--card); border-radius: var(--radius); padding: 12px 20px;
+    box-shadow: var(--shadow); flex-shrink: 0; margin-top: 4px;
+}
+.batt-big {
+    display: flex; flex-direction: column; align-items: center; min-width: 80px;
+}
+.soc-pct { font-size: 34px; font-weight: 900; line-height: 1; }
+.hvs-val { font-size: 18px; font-weight: 800; color: var(--green); margin-top: 4px; }
 
-.battery-visual { width: 100%; display: flex; justify-content: center; }
-.battery-icon-v {
-    width: 100%; height: 20px; border: 2px solid var(--text-dim);
-    border-radius: 3px; position: relative; overflow: hidden;
+.battery-visual.flex-fill {
+    flex: 1; margin: 0 12px;
 }
-.battery-icon-v::after {
-    content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 10px; background: var(--text-dim); border-radius: 0 2px 2px 0;
+.battery-icon-h {
+    width: 100%; height: 32px; border: 3px solid var(--text-dim);
+    border-radius: 6px; position: relative; overflow: hidden;
 }
-.battery-fill-v {
-    height: 100%; width: 0%; border-radius: 1px;
+.battery-icon-h::after {
+    content: ''; position: absolute; right: -7px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 16px; background: var(--text-dim); border-radius: 0 3px 3px 0;
+}
+.battery-fill-h {
+    height: 100%; width: 0%; border-radius: 2px;
     background: linear-gradient(90deg, var(--green), #66bb6a); transition: width 0.6s;
 }
-.soc-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-.soc-pct { font-size: 26px; font-weight: 900; }
-.soc-label { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; }
-.bms-row { display: flex; gap: 8px; width: 100%; margin-top: 2px; }
-.bms-item { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+.batt-details {
+    display: flex; flex-direction: column; gap: 8px; min-width: 320px;
+}
+.bms-row-h {
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+}
+.bms-item { font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .bms-item span:last-child { font-weight: 800; color: var(--text); }
 .bms-key { letter-spacing: 1px; }
 
-/* BMS NTC Temps */
-.bms-ntc-row {
-    display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px;
+.bms-ntc-row-h {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
-.bms-ntc-title { font-size: 10px; font-weight: 800; color: var(--text-dim); letter-spacing: 1px; }
+.bms-ntc-title { font-size: 11px; font-weight: 800; color: var(--text-dim); letter-spacing: 1px; }
 .bms-ntc {
-    font-size: 10px; font-weight: 700; background: var(--bg); padding: 2px 5px;
-    border-radius: 3px; color: var(--text);
+    font-size: 12px; font-weight: 700; background: var(--bg); padding: 3px 8px;
+    border-radius: 4px; color: var(--text);
 }
-
+.soc-label { font-size: 14px; font-weight: 800; letter-spacing: 1.5px; }
 /* Tilt */
 .tilt-panel { display: flex; align-items: center; gap: 8px; justify-content: center; }
 .tilt-deg { font-size: 24px; font-weight: 900; }

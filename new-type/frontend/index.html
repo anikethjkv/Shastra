@@ -90,6 +90,36 @@
                     </div>
                 </div>
 
+                <!-- Battery Horizontal Strip -->
+                <div class="battery-strip">
+                    <div class="batt-big">
+                        <span class="soc-pct" id="soc-pct">0%</span>
+                        <span class="hvs-val" id="hvs-voltage">0V</span>
+                    </div>
+                    <div class="battery-visual flex-fill">
+                        <div class="battery-icon-h" id="battery-icon">
+                            <div class="battery-fill-h" id="battery-fill"></div>
+                        </div>
+                    </div>
+                    <div class="batt-details">
+                        <div class="bms-row-h">
+                            <span class="bms-item"><span class="bms-key">CUR</span> <span id="bms-current">0A</span></span>
+                            <span class="bms-item"><span class="bms-key">CYC</span> <span id="bms-cycles">0</span></span>
+                            <span class="bms-item"><span class="bms-key">CAP</span> <span id="bms-cap">—</span></span>
+                            <span class="bms-item"><span class="bms-key">STR</span> <span id="bms-strings">—</span></span>
+                            <span class="soc-label" id="soc-label">—</span>
+                        </div>
+                        <div class="bms-ntc-row-h">
+                            <span class="bms-ntc-title">NTC PROBES</span>
+                            <span class="bms-ntc" id="ntc1">—</span>
+                            <span class="bms-ntc" id="ntc2">—</span>
+                            <span class="bms-ntc" id="ntc3">—</span>
+                            <span class="bms-ntc" id="ntc4">—</span>
+                            <span class="bms-ntc" id="ntc5">—</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Power / Distance bar -->
                 <div class="info-strip">
                     <div class="strip-item">
@@ -173,42 +203,7 @@
                 </div>
                 
                 <div class="sidebar-column">
-                <!-- Battery / SOC -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title">BATTERY</div>
-                    <div class="battery-panel">
-                        <div class="hvs-row">
-                            <span class="hvs-label">HVS</span>
-                            <span class="hvs-val" id="hvs-voltage">0V</span>
-                        </div>
-                        <div class="battery-visual">
-                            <div class="battery-icon-v" id="battery-icon">
-                                <div class="battery-fill-v" id="battery-fill"></div>
-                            </div>
-                        </div>
-                        <div class="soc-row">
-                            <span class="soc-pct" id="soc-pct">0%</span>
-                            <span class="soc-label" id="soc-label">—</span>
-                        </div>
-                        <div class="bms-row">
-                            <span class="bms-item"><span class="bms-key">CUR</span> <span id="bms-current">0A</span></span>
-                            <span class="bms-item"><span class="bms-key">CYC</span> <span id="bms-cycles">0</span></span>
-                        </div>
-                        <div class="bms-row">
-                            <span class="bms-item"><span class="bms-key">CAP</span> <span id="bms-cap">—</span></span>
-                            <span class="bms-item"><span class="bms-key">STR</span> <span id="bms-strings">—</span></span>
-                        </div>
-                        <div class="bms-ntc-row">
-                            <span class="bms-ntc-title">NTC</span>
-                            <span class="bms-ntc" id="ntc1">—</span>
-                            <span class="bms-ntc" id="ntc2">—</span>
-                            <span class="bms-ntc" id="ntc3">—</span>
-                            <span class="bms-ntc" id="ntc4">—</span>
-                            <span class="bms-ntc" id="ntc5">—</span>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- Battery moved to center panel -->
                 <!-- Tilt -->
                 <div class="sidebar-section">
                     <div class="sidebar-title">TILT</div>
