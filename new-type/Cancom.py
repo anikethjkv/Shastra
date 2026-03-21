@@ -4,13 +4,11 @@ import time
 import struct
 import subprocess
 import sqlite3
-import json
 
 # --- CONFIGURATION ---
 CAN_INTERFACE = 'can0'
 CAN_BITRATE = 500000
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.db")
-RT_PATH = "/tmp/shastra_rt.json"  # Fast path for speed/RPM (tmpfs = RAM)
 
 # BMS CAN IDs for battery data polling
 BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
@@ -56,49 +54,6 @@ def db_flush():
     except Exception as e:
         print(f"[DB COMMIT ERROR]: {e}")
 
-# --- Realtime file for speed/RPM (bypasses SQLite latency) ---
-rt_data = {"speed": 0.0, "rpm": 0, "pwr": 0, "m_temp": 0}
-
-def rt_write():
-    """Write speed/RPM/power to tmpfs for instant dashboard access."""
-    try:
-        with open(RT_PATH, 'w') as f:
-            json.dump(rt_data, f)
-    except:
-        pass
-
-# --- ZMQ (only for sqlwriter commands) ---
-try:
-    import zmq
-    zmq_context = zmq.Context()
-    zmq_socket = zmq_context.socket(zmq.REQ)
-    zmq_socket.setsockopt(zmq.SNDTIMEO, 1000)
-    zmq_socket.setsockopt(zmq.RCVTIMEO, 1000)
-    zmq_socket.setsockopt(zmq.LINGER, 0)
-    zmq_socket.connect("tcp://localhost:5555")
-    HAS_ZMQ = True
-except:
-    HAS_ZMQ = False
-
-def zmq_command(name, command):
-    """Send a command via ZMQ (only for get_value/get_distance)."""
-    if not HAS_ZMQ:
-        return None
-    global zmq_socket
-    try:
-        zmq_socket.send_json({"name": name, "command": command})
-        return zmq_socket.recv_json()
-    except:
-        try:
-            zmq_socket.close()
-            zmq_socket = zmq_context.socket(zmq.REQ)
-            zmq_socket.setsockopt(zmq.SNDTIMEO, 1000)
-            zmq_socket.setsockopt(zmq.RCVTIMEO, 1000)
-            zmq_socket.setsockopt(zmq.LINGER, 0)
-            zmq_socket.connect("tcp://localhost:5555")
-        except:
-            pass
-        return None
 
 # --- CAN Setup ---
 def setup_can():
@@ -115,13 +70,14 @@ def setup_can():
         return False
 
 def check_remote_start(bus):
-    reply = zmq_command("remote_start_cmd", "get_value")
-    if reply and reply.get("status") == "OK":
-        cmd = int(float(reply.get("value", 0)))
-        try:
+    """Read remote_start_cmd from SQLite and send to CAN."""
+    try:
+        row = db_conn.execute("SELECT reading_value FROM latest_readings WHERE sensor_name='remote_start_cmd'").fetchone()
+        cmd = int(float(row[0])) if row else 0
+        if cmd:
             bus.send(can.Message(arbitration_id=0x41, data=[cmd], is_extended_id=False))
-        except:
-            pass
+    except:
+        pass
 
 def poll_bms(bus):
     """Poll BMS CAN IDs and write responses to SQLite."""
@@ -187,25 +143,23 @@ def parse_can(msg):
         db_write("ctrl_flags", decode_le(d[4:6], signed=False))
         db_write("ctrl_flags2", decode_le(d[6:8], signed=False))
 
-    # --- TPDO 2: Motor Data → FAST PATH (speed/RPM skip SQLite) ---
+    # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA:
         pwr   = decode_le(d[0:2])
         speed = decode_le(d[2:4]) / SCALES["speed"]
         rpm   = decode_le(d[4:6])
         mtemp = decode_le(d[6:8])
 
-        # Write to realtime file (instant dashboard access)
-        rt_data["pwr"]    = pwr
-        rt_data["speed"]  = round(speed, 2)
-        rt_data["rpm"]    = rpm
-        rt_data["m_temp"] = mtemp
+        db_write("motor_pwr", pwr)
+        db_write("vehicle_speed", round(speed, 2))
+        db_write("motor_rpm", rpm)
+        db_write("motor_temp", mtemp)
 
-        # Odometer (still goes to SQLite)
+        # Odometer
         now = time.time()
         total_distance_km += speed * ((now - last_time) / 3600.0)
         last_time = now
         db_write("total_distance", total_distance_km)
-        db_write("motor_temp", mtemp)
 
     # --- TPDO 3: Battery Data ---
     elif cid == 0x3AA:
@@ -255,12 +209,11 @@ except:
 
 last_time = time.time()
 last_flush = time.time()
-last_rt_write = time.time()
 last_remote = time.time()
 last_bms = time.time()
 msg_count = 0
 
-print("Shastra CAN Collector running (direct SQLite + fast RT path)...")
+print("Shastra CAN Collector running (direct SQLite writes)...")
 
 try:
     while True:
@@ -270,11 +223,6 @@ try:
             msg_count += 1
 
         now = time.time()
-
-        # Flush realtime data every 50ms (speed/RPM to tmpfs)
-        if now - last_rt_write > 0.05:
-            rt_write()
-            last_rt_write = now
 
         # Flush SQLite every 250ms
         if now - last_flush > 0.25:
