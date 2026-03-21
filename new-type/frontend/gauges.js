@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   Shastra EV Dashboard — Canvas Gauge Renderers
+   Shastra EV Dashboard — Canvas Gauge Renderers (Optimised for Pi)
    ═══════════════════════════════════════════════════════════════ */
 
 const Gauges = (() => {
 
-    /* ── Colour palette (light mode) ──────────────────────────── */
+    /* ── Colour palette ──────────────────────────── */
     const C = {
         track:   '#e2e5ea',
         text:    '#1a1d23',
@@ -16,24 +16,17 @@ const Gauges = (() => {
         red:     '#d32f2f',
     };
 
-    /* ────────────────────────────────────────────────────────────
-       Speed Gauge
-       Large 220° arc with gradient fill: teal → cyan → amber → red
-    ──────────────────────────────────────────────────────────── */
-    function drawSpeedometer(canvas, speed, maxSpeed = 60) {
-        const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-        ctx.clearRect(0, 0, W, H);
+    /* ── Cached Offscreen Backgrounds ────────────── */
+    const cache = {
+        speedBg: null,
+        rpmBg: null,
+        speedGrad: null,
+    };
 
-        const cx = W / 2;
-        const cy = H * 0.62;
-        const r = Math.min(W, H) * 0.42;
-
-        const startAngle = Math.PI * 0.8;
-        const endAngle = Math.PI * 2.2;
-        const totalArc = endAngle - startAngle;
-        const valueAngle = startAngle + (Math.min(speed, maxSpeed) / maxSpeed) * totalArc;
+    function createSpeedBackground(W, H, r, cx, cy, startAngle, endAngle, totalArc, maxSpeed) {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
 
         /* Track */
         ctx.beginPath();
@@ -42,22 +35,6 @@ const Gauges = (() => {
         ctx.lineWidth = 14;
         ctx.lineCap = 'round';
         ctx.stroke();
-
-        /* Value arc — gradient */
-        if (speed > 0) {
-            const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-            grad.addColorStop(0, C.cyan);
-            grad.addColorStop(0.5, C.teal);
-            grad.addColorStop(0.8, C.amber);
-            grad.addColorStop(1, C.red);
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, startAngle, valueAngle);
-            ctx.strokeStyle = grad;
-            ctx.lineWidth = 14;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-        }
 
         /* Tick marks */
         const numTicks = 6;
@@ -82,6 +59,49 @@ const Gauges = (() => {
             ctx.textBaseline = 'middle';
             ctx.fillText(val, cx + Math.cos(angle) * labelR, cy + Math.sin(angle) * labelR);
         }
+        return c;
+    }
+
+    /* ────────────────────────────────────────────────────────────
+       Speed Gauge
+    ──────────────────────────────────────────────────────────── */
+    function drawSpeedometer(canvas, speed, maxSpeed = 60) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const cx = W / 2;
+        const cy = H * 0.62;
+        const r = Math.min(W, H) * 0.42;
+
+        const startAngle = Math.PI * 0.8;
+        const endAngle = Math.PI * 2.2;
+        const totalArc = endAngle - startAngle;
+        const valueAngle = startAngle + (Math.min(speed, maxSpeed) / maxSpeed) * totalArc;
+
+        /* Create cache once */
+        if (!cache.speedBg) {
+            cache.speedBg = createSpeedBackground(W, H, r, cx, cy, startAngle, endAngle, totalArc, maxSpeed);
+            cache.speedGrad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+            cache.speedGrad.addColorStop(0, C.cyan);
+            cache.speedGrad.addColorStop(0.5, C.teal);
+            cache.speedGrad.addColorStop(0.8, C.amber);
+            cache.speedGrad.addColorStop(1, C.red);
+        }
+
+        /* Draw static background from cache (incredibly fast) */
+        ctx.drawImage(cache.speedBg, 0, 0);
+
+        /* Value arc */
+        if (speed > 0) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, startAngle, valueAngle);
+            ctx.strokeStyle = cache.speedGrad;
+            ctx.lineWidth = 14;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
 
         /* Needle */
         const needleLen = r - 18;
@@ -102,30 +122,17 @@ const Gauges = (() => {
         ctx.fill();
     }
 
-    /* ────────────────────────────────────────────────────────────
-       RPM Gauge
-       Smaller 220° arc with green → amber → red zones
-    ──────────────────────────────────────────────────────────── */
-    function drawRPMGauge(canvas, rpm, maxRPM = 5000) {
-        const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-        ctx.clearRect(0, 0, W, H);
 
-        const cx = W / 2;
-        const cy = H * 0.65;
-        const r = Math.min(W, H) * 0.44;
-
-        const startAngle = Math.PI * 0.8;
-        const endAngle = Math.PI * 2.2;
-        const totalArc = endAngle - startAngle;
-        const valueAngle = startAngle + (Math.min(rpm, maxRPM) / maxRPM) * totalArc;
+    function createRPMBackground(W, H, r, cx, cy, startAngle, endAngle, totalArc, maxRPM) {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
 
         /* Zone backgrounds */
         const zones = [
-            { from: 0, to: 0.6, color: '#c8e6c9' },  /* green zone */
-            { from: 0.6, to: 0.8, color: '#fff9c4' }, /* amber zone */
-            { from: 0.8, to: 1.0, color: '#ffcdd2' }, /* red zone */
+            { from: 0, to: 0.6, color: '#c8e6c9' },
+            { from: 0.6, to: 0.8, color: '#fff9c4' },
+            { from: 0.8, to: 1.0, color: '#ffcdd2' },
         ];
 
         zones.forEach(z => {
@@ -136,21 +143,6 @@ const Gauges = (() => {
             ctx.lineCap = 'butt';
             ctx.stroke();
         });
-
-        /* Value arc */
-        if (rpm > 0) {
-            const pct = rpm / maxRPM;
-            let arcColor = C.green;
-            if (pct > 0.8) arcColor = C.red;
-            else if (pct > 0.6) arcColor = C.amber;
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, startAngle, valueAngle);
-            ctx.strokeStyle = arcColor;
-            ctx.lineWidth = 12;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-        }
 
         /* Tick marks */
         const tickCount = 5;
@@ -175,6 +167,48 @@ const Gauges = (() => {
             ctx.textBaseline = 'middle';
             ctx.fillText(val, cx + Math.cos(angle) * lr, cy + Math.sin(angle) * lr);
         }
+        return c;
+    }
+
+    /* ────────────────────────────────────────────────────────────
+       RPM Gauge
+    ──────────────────────────────────────────────────────────── */
+    function drawRPMGauge(canvas, rpm, maxRPM = 5000) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const cx = W / 2;
+        const cy = H * 0.65;
+        const r = Math.min(W, H) * 0.44;
+
+        const startAngle = Math.PI * 0.8;
+        const endAngle = Math.PI * 2.2;
+        const totalArc = endAngle - startAngle;
+        const valueAngle = startAngle + (Math.min(rpm, maxRPM) / maxRPM) * totalArc;
+
+        if (!cache.rpmBg) {
+            cache.rpmBg = createRPMBackground(W, H, r, cx, cy, startAngle, endAngle, totalArc, maxRPM);
+        }
+
+        /* Draw static background */
+        ctx.drawImage(cache.rpmBg, 0, 0);
+
+        /* Value arc */
+        if (rpm > 0) {
+            const pct = rpm / maxRPM;
+            let arcColor = C.green;
+            if (pct > 0.8) arcColor = C.red;
+            else if (pct > 0.6) arcColor = C.amber;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, startAngle, valueAngle);
+            ctx.strokeStyle = arcColor;
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
 
         /* Needle */
         const needleLen = r - 16;
@@ -195,8 +229,7 @@ const Gauges = (() => {
     }
 
     /* ────────────────────────────────────────────────────────────
-       Tilt Indicator
-       Crosshair with a dot representing lean
+       Tilt Indicator (Cheap to draw, no background needed)
     ──────────────────────────────────────────────────────────── */
     function drawTilt(canvas, ax, ay) {
         const ctx = canvas.getContext('2d');
@@ -208,21 +241,18 @@ const Gauges = (() => {
         const cy = H / 2;
         const r = Math.min(W, H) / 2 - 4;
 
-        /* Outer ring */
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.strokeStyle = C.track;
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        /* Inner ring */
         ctx.beginPath();
         ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
         ctx.strokeStyle = C.track;
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        /* Crosshair */
         ctx.beginPath();
         ctx.moveTo(cx - r, cy);
         ctx.lineTo(cx + r, cy);
@@ -232,7 +262,6 @@ const Gauges = (() => {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        /* Dot — map accelerometer to position (clamp to ring) */
         const maxG = 10;
         let dx = (ax / maxG) * r * 0.8;
         let dy = (ay / maxG) * r * 0.8;
@@ -254,5 +283,13 @@ const Gauges = (() => {
         ctx.stroke();
     }
 
-    return { drawSpeedometer, drawRPMGauge, drawTilt };
+    // Expose clear cache method if window resizes
+    function clearCache() {
+        cache.speedBg = null;
+        cache.rpmBg = null;
+    }
+
+    window.addEventListener('resize', clearCache);
+
+    return { drawSpeedometer, drawRPMGauge, drawTilt, clearCache };
 })();
