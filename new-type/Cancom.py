@@ -190,6 +190,11 @@ def parse_can(msg):
         db_write("warnings", decode_le(d[4:6], signed=False))
         db_write("warnings2", decode_le(d[6:8], signed=False))
 
+    else:
+        # Ignore BMS IDs which we poll actively
+        if cid not in BMS_IDS:
+            print(f"[UNKNOWN] ID: {hex(cid)} | LEN: {len(d)} | DATA: {d.hex()}")
+
 # --- Main ---
 if not setup_can():
     print("[!] CAN interface failed. Exiting.")
