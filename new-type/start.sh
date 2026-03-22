@@ -12,6 +12,23 @@ sleep 1
 
 echo "Opening terminals and starting Shastra Telemetry services..."
 
+ensure_running() {
+    local script="$1"
+    local log_file="$2"
+
+    if ! pgrep -f "$script" >/dev/null; then
+        echo "[fallback] $script did not stay running. Starting in background..."
+        nohup python3 "$script" > "$log_file" 2>&1 &
+        sleep 0.5
+    fi
+
+    if pgrep -f "$script" >/dev/null; then
+        echo "[ok] $script is running"
+    else
+        echo "[error] $script failed to start. Check $log_file"
+    fi
+}
+
 # Raspberry Pi Default (LXDE Desktop)
 if command -v lxterminal &> /dev/null; then
     lxterminal --title="CAN Telemetry" -e "python3 Cancom.py" &
@@ -39,11 +56,14 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 # Headless / No GUI fallback
 else
     echo "No GUI terminal found. Running in the background..."
-    python3 Cancom.py &
-    python3 SensorReader.py &
-    python3 api.py &
-    echo "Press Ctrl+C to stop all services."
-    wait
+    nohup python3 Cancom.py > cancom.log 2>&1 &
+    nohup python3 SensorReader.py > sensorreader.log 2>&1 &
+    nohup python3 api.py > api.log 2>&1 &
 fi
+
+sleep 1
+ensure_running "Cancom.py" "cancom.log"
+ensure_running "SensorReader.py" "sensorreader.log"
+ensure_running "api.py" "api.log"
 
 echo "Done! The dashboard is running."
