@@ -10,14 +10,6 @@
     const fallbackData = '/api/data';
     const $ = id => document.getElementById(id);
 
-    const demoMode = (() => {
-        try {
-            return new URLSearchParams(window.location.search).get('demo') === '1';
-        } catch {
-            return false;
-        }
-    })();
-
     /* ── Cached DOM refs ──────────────────────────────────────── */
     const el = {
         phaseU:       $('phase-u'),
@@ -38,20 +30,9 @@
         totalDist:    $('total-distance'),
         faultStatus:  $('fault-status'),
         warnStatus:   $('warn-status'),
-        hvStatusBadge: $('hv-status-badge'),
-        hvStatusText: $('hv-status-text'),
-        topFaultBtn:  $('top-fault-btn'),
-        topWarnBtn:   $('top-warn-btn'),
-        topGpsPill:   $('top-gps-pill'),
-        topLtePill:   $('top-lte-pill'),
-        alertPopover: $('alert-popover'),
-        alertTitle:   $('alert-popover-title'),
-        alertBody:    $('alert-popover-body'),
-        alertClose:   $('alert-popover-close'),
         motorTemp:    $('motor-temp'),
         ctrlTemp:     $('ctrl-temp'),
         battTemp:     $('batt-temp'),
-        smokeStatus:  $('smoke-status'),
         smokeIcon:    $('smoke-icon'),
         smokeLabel:   $('smoke-label'),
         gpsStatus:    $('gps-status'),
@@ -80,58 +61,12 @@
     const tiltCanvas  = $('tilt-canvas');
 
     let prev = {};
-    const latestAlerts = {
-        faults: { total: 0, f1: 0, f2: 0, f3: 0 },
-        warnings: { total: 0, w1: 0, w2: 0 },
-    };
 
 
     /* ── Helpers ──────────────────────────────────────────────── */
     function setText(e, v) { if (e && e._l !== v) { e.textContent = v; e._l = v; } }
     function setHTML(e, v) { if (e && e._h !== v) { e.innerHTML = v; e._h = v; } }
     function pad2(n) { return n < 10 ? '0' + n : '' + n; }
-
-    function setClassName(e, v) {
-        if (e && e.className !== v) e.className = v;
-    }
-
-    function setTopState(e, level) {
-        if (!e) return;
-        e.classList.remove('ok', 'warn', 'fault', 'offline');
-        e.classList.add(level);
-    }
-
-    function openAlertPopover(type) {
-        if (!el.alertPopover || !el.alertTitle || !el.alertBody) return;
-        const isFault = type === 'fault';
-        const data = isFault ? latestAlerts.faults : latestAlerts.warnings;
-        const total = data.total || 0;
-
-        el.alertTitle.textContent = isFault ? 'FAULT DETAILS' : 'WARNING DETAILS';
-        if (total <= 0) {
-            el.alertBody.textContent = isFault ? 'No active faults.' : 'No active warnings.';
-        } else if (isFault) {
-            el.alertBody.textContent =
-                `faults: ${data.f1}\n` +
-                `faults2: ${data.f2}\n` +
-                `faults3: ${data.f3}\n` +
-                `combined(mask): ${data.total}`;
-        } else {
-            el.alertBody.textContent =
-                `warnings: ${data.w1}\n` +
-                `warnings2: ${data.w2}\n` +
-                `combined(mask): ${data.total}`;
-        }
-
-        el.alertPopover.classList.add('show');
-        el.alertPopover.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeAlertPopover() {
-        if (!el.alertPopover) return;
-        el.alertPopover.classList.remove('show');
-        el.alertPopover.setAttribute('aria-hidden', 'true');
-    }
 
     function setIndicator(e, active) {
         if (e) {
@@ -169,9 +104,7 @@
         const spdRound = Math.round(speed);
         
         if (prev.rpm !== rpm || prev.spd !== spdRound) {
-            if (rpmCanvas && typeof Gauges !== 'undefined' && Gauges && typeof Gauges.drawRPMGauge === 'function') {
-                Gauges.drawRPMGauge(rpmCanvas, rpm, speed, 5000);
-            }
+            Gauges.drawRPMGauge(rpmCanvas, rpm, speed, 5000);
             prev.rpm = rpm;
             prev.spd = spdRound;
         }
@@ -218,13 +151,7 @@
         const ax = d.accel_x || 0, ay = d.accel_y || 0;
         const tilt = Math.sqrt(ax * ax + ay * ay).toFixed(1);
         setText(el.tiltDeg, tilt + '°');
-        if (prev.ax !== ax || prev.ay !== ay) {
-            if (tiltCanvas && typeof Gauges !== 'undefined' && Gauges && typeof Gauges.drawTilt === 'function') {
-                Gauges.drawTilt(tiltCanvas, ax, ay);
-            }
-            prev.ax = ax;
-            prev.ay = ay;
-        }
+        if (prev.ax !== ax || prev.ay !== ay) { Gauges.drawTilt(tiltCanvas, ax, ay); prev.ax = ax; prev.ay = ay; }
 
         /* Power & distance */
         const pwr = Math.round(d.motor_pwr || 0);
@@ -234,41 +161,22 @@
 
         /* Faults (combined from all sources) */
         const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);
-        latestAlerts.faults = {
-            total: totalFaults,
-            f1: (d.faults || 0),
-            f2: (d.faults2 || 0),
-            f3: (d.faults3 || 0),
-        };
         if (totalFaults > 0) {
             setText(el.faultStatus, 'ACTIVE');
-            setClassName(el.faultStatus, 'strip-value strip-fault');
-            setTopState(el.topFaultBtn, 'fault');
-            if (el.topFaultBtn) el.topFaultBtn.title = 'Faults active (tap for details)';
+            el.faultStatus.className = 'strip-value strip-fault';
         } else {
             setText(el.faultStatus, 'NONE');
-            setClassName(el.faultStatus, 'strip-value strip-ok');
-            setTopState(el.topFaultBtn, 'ok');
-            if (el.topFaultBtn) el.topFaultBtn.title = 'No active faults';
+            el.faultStatus.className = 'strip-value strip-ok';
         }
 
         /* Warnings (combined from all sources) */
         const totalWarns = (d.warnings || 0) | (d.warnings2 || 0);
-        latestAlerts.warnings = {
-            total: totalWarns,
-            w1: (d.warnings || 0),
-            w2: (d.warnings2 || 0),
-        };
         if (totalWarns > 0) {
             setText(el.warnStatus, 'ACTIVE');
-            setClassName(el.warnStatus, 'strip-value strip-warn');
-            setTopState(el.topWarnBtn, 'warn');
-            if (el.topWarnBtn) el.topWarnBtn.title = 'Warnings active (tap for details)';
+            el.warnStatus.className = 'strip-value strip-warn';
         } else {
             setText(el.warnStatus, 'NONE');
-            setClassName(el.warnStatus, 'strip-value strip-ok');
-            setTopState(el.topWarnBtn, 'ok');
-            if (el.topWarnBtn) el.topWarnBtn.title = 'No active warnings';
+            el.warnStatus.className = 'strip-value strip-ok';
         }
 
         /* Temperatures */
@@ -279,14 +187,12 @@
         /* Smoke sensor */
         const smokeDetected = (d.smoke_detected || 0) >= 1;
         if (smokeDetected) {
-            if (el.smokeStatus) el.smokeStatus.classList.add('smoke-alert');
-            if (el.smokeIcon) el.smokeIcon.classList.add('alert');
-            if (el.smokeLabel) el.smokeLabel.classList.add('alert');
+            el.smokeIcon.classList.add('alert');
+            el.smokeLabel.classList.add('alert');
             setText(el.smokeLabel, 'ALERT!');
         } else {
-            if (el.smokeStatus) el.smokeStatus.classList.remove('smoke-alert');
-            if (el.smokeIcon) el.smokeIcon.classList.remove('alert');
-            if (el.smokeLabel) el.smokeLabel.classList.remove('alert');
+            el.smokeIcon.classList.remove('alert');
+            el.smokeLabel.classList.remove('alert');
             setText(el.smokeLabel, 'CLEAR');
         }
 
@@ -302,22 +208,11 @@
         const gpsLock = (d.gps_lock || 0) >= 2;
         const lteOn   = (d.lte_status || 0) >= 1;
         setText(el.gpsStatus, gpsLock ? 'LOCK' : 'NO FIX');
-        setClassName(el.gpsStatus, connClass(gpsLock));
+        el.gpsStatus.className = connClass(gpsLock);
         setText(el.lteStatus, lteOn ? 'ON' : 'OFF');
-        setClassName(el.lteStatus, connClass(lteOn));
+        el.lteStatus.className = connClass(lteOn);
         setText(el.canStatus, 'OK');
-        setClassName(el.canStatus, connClass(true));
-
-        setTopState(el.topGpsPill, gpsLock ? 'ok' : 'offline');
-        setTopState(el.topLtePill, lteOn ? 'ok' : 'offline');
-
-        /* HV Status */
-        const hvOn = (d.hv_active || 0) >= 1;
-        if (el.hvStatusBadge) {
-            if (hvOn) el.hvStatusBadge.classList.add('active');
-            else el.hvStatusBadge.classList.remove('active');
-        }
-        setText(el.hvStatusText, hvOn ? 'HV ACTIVE' : 'HV OFF');
+        el.canStatus.className = connClass(true);
     }
 
     /* ── Demo data (shown when API is offline) ────────────────── */
@@ -335,62 +230,14 @@
         });
     }
 
-    function startDemoAnimation() {
-        const t0 = performance.now();
-        setInterval(() => {
-            const t = (performance.now() - t0) / 1000;
-            const speed = 45 + 35 * Math.sin(t * 0.8);
-            const rpm = Math.max(0, Math.round(500 + speed * 55 + 350 * Math.sin(t * 1.6)));
-            updateUI({
-                phase_v_a: 35 + 2 * Math.sin(t * 1.1),
-                phase_v_b: 35 + 2 * Math.sin(t * 1.1 + 1.2),
-                phase_v_c: 35 + 2 * Math.sin(t * 1.1 + 2.4),
-                phase_i_a: 0.2 + 1.3 * Math.sin(t * 1.7),
-                phase_i_b: 0.2 + 1.3 * Math.sin(t * 1.7 + 1.2),
-                phase_i_c: 0.2 + 1.3 * Math.sin(t * 1.7 + 2.4),
-                motor_rpm: rpm,
-                vehicle_speed: Math.max(0, speed),
-                motor_pwr: Math.max(0, Math.round(speed * 40)),
-                total_distance: (t * 0.02),
-                bms_total_voltage: 70,
-                bms_soc: 100,
-                bms_current: Math.max(0, 2 + 6 * Math.sin(t * 0.8)),
-                bms_cycles: 0,
-                accel_x: 0.8 * Math.sin(t * 0.7),
-                accel_y: 0.8 * Math.cos(t * 0.7),
-                motor_temp: 30,
-                ctrl_temp: 30,
-                batt_temp: 29,
-                smoke_detected: 0,
-                sw_left: (Math.sin(t * 2.8) > 0.85) ? 1 : 0,
-                sw_right: (Math.sin(t * 2.8 + 1.7) > 0.85) ? 1 : 0,
-                sw_horn: 0,
-                sw_brake: (speed < 5) ? 1 : 0,
-                sw_head: 1,
-                sw_hi_beam: 0,
-                gps_lock: 3,
-                lte_status: 1,
-                faults: 0,
-                faults2: 0,
-                faults3: 0,
-                warnings: 0,
-                warnings2: 0,
-            });
-        }, 50);
-    }
-
     /* ── SSE Stream ───────────────────────────────────────────── */
     function connectStream() {
         const source = new EventSource(STREAM_URL);
         
         source.onmessage = (e) => {
 
-            try {
-                const data = JSON.parse(e.data);
-                updateUI(data);
-            } catch {
-                // Ignore malformed frames
-            }
+            const data = JSON.parse(e.data);
+            updateUI(data);
         };
         
         source.onerror = () => {
@@ -411,30 +258,13 @@
         });
     });
 
-    if (el.topFaultBtn) el.topFaultBtn.addEventListener('click', () => openAlertPopover('fault'));
-    if (el.topWarnBtn) el.topWarnBtn.addEventListener('click', () => openAlertPopover('warn'));
-    if (el.alertClose) el.alertClose.addEventListener('click', closeAlertPopover);
-    if (el.alertPopover) {
-        el.alertPopover.addEventListener('click', (evt) => {
-            if (evt.target === el.alertPopover) closeAlertPopover();
-        });
-    }
-
     /* ── Init ─────────────────────────────────────────────────── */
     /* Gauges */
-    if (rpmCanvas && typeof Gauges !== 'undefined' && Gauges && typeof Gauges.drawRPMGauge === 'function') {
-        Gauges.drawRPMGauge(rpmCanvas, 0, 0);
-    }
-    if (tiltCanvas && typeof Gauges !== 'undefined' && Gauges && typeof Gauges.drawTilt === 'function') {
-        Gauges.drawTilt(tiltCanvas, 0, 0);
-    }
+    Gauges.drawRPMGauge(rpmCanvas, 0, 0);
+    Gauges.drawTilt(tiltCanvas, 0, 0);
 
 
     
-    if (demoMode) {
-        startDemoAnimation();
-    } else {
-        // Connect to realtime server stream
-        connectStream();
-    }
+    // Connect to realtime server stream
+    connectStream();
 })();
