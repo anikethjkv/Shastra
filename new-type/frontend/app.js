@@ -85,6 +85,101 @@
         warnings: { total: 0, w1: 0, w2: 0 },
     };
 
+    const FAULTS_1 = [
+        'Averaged controller over voltage',
+        'Averaged phase over current',
+        'Current sensor calibration',
+        'Current sensor over current',
+        'Controller over temperature',
+        'Motor Hall sensor fault',
+        'Averaged motor over temperature',
+        'POST static gating test',
+        'Network communication timeout',
+        'Instantaneous phase over current',
+        'Motor over temperature',
+        'Throttle voltage outside range',
+        'Instantaneous controller over voltage',
+        'Internal error',
+        'POST dynamic gating test',
+        'Instantaneous undervoltage',
+    ];
+
+    const FAULTS_2 = [
+        'Parameter CRC',
+        'Current scaling',
+        'Voltage scaling',
+        'Headlight undervoltage',
+        'Parameter 3 CRC',
+        'CAN bus',
+        'Hall stall',
+        'Bootloader (not used)',
+        'Parameter 2 CRC',
+        'Hall vs sensorless position',
+        'Spare',
+        'Spare',
+        'Remote CAN fault',
+        'Open phase fault',
+        'Analog brake voltage out of range',
+        'Reserved bit 15',
+    ];
+
+    const FAULTS_3 = [
+        'Encoder sin voltage range',
+        'Encoder cos voltage range',
+        'Analog input saturation fault',
+        'Dual throttle out of range bit 3',
+        'Reserved bit 4',
+        'Reserved bit 5',
+        'Reserved bit 6',
+        'Reserved bit 7',
+        'Reserved bit 8',
+        'Reserved bit 9',
+        'Reserved bit 10',
+        'Reserved bit 11',
+        'Reserved bit 12',
+        'Reserved bit 13',
+        'Reserved bit 14',
+        'Reserved bit 15',
+    ];
+
+    const WARNINGS_1 = [
+        'Communication timeout',
+        'Hall sensor',
+        'Hall stall',
+        'Wheel speed sensor',
+        'CAN bus',
+        'Hall illegal sector',
+        'Hall illegal transition',
+        'Low battery voltage foldback',
+        'High battery voltage foldback',
+        'Motor temperature foldback',
+        'Controller over temperature foldback',
+        'Low SOC foldback',
+        'High SOC foldback',
+        'I2T overload foldback',
+        'Low-temperature battery/controller foldback',
+        'Obsolete - BMS communication timeout',
+    ];
+
+    const WARNINGS_2 = [
+        'Throttle out of range warning',
+        'Dual speed sensor missing pulses warning',
+        'Dual speed sensor no pulses warning',
+        'Dynamic flash full warning',
+        'Dynamic flash read error',
+        'Dynamic flash write error',
+        'Parameters3 missing warning',
+        'Missed CAN message',
+        'High battery temperature foldback',
+        'ADC saturation warning',
+        'Reserved bit 10',
+        'Reserved bit 11',
+        'Reserved bit 12',
+        'Reserved bit 13',
+        'Reserved bit 14',
+        'Reserved bit 15',
+    ];
+
 
     /* ── Helpers ──────────────────────────────────────────────── */
     function setText(e, v) { if (e && e._l !== v) { e.textContent = v; e._l = v; } }
@@ -101,6 +196,27 @@
         e.classList.add(level);
     }
 
+    function activeBits(mask, labels) {
+        const m = Number(mask) || 0;
+        const out = [];
+        for (let i = 0; i < 16; i++) {
+            if ((m & (1 << i)) !== 0) out.push(`bit ${i}: ${labels[i] || `Unknown bit ${i}`}`);
+        }
+        return out;
+    }
+
+    function hexMask(mask) {
+        const m = Number(mask) || 0;
+        return `0x${(m >>> 0).toString(16).toUpperCase().padStart(4, '0')}`;
+    }
+
+    function formatMaskDetails(title, mask, labels) {
+        const entries = activeBits(mask, labels);
+        const head = `${title} (${hexMask(mask)})`;
+        if (!entries.length) return `${head}\n  - none`;
+        return `${head}\n  - ${entries.join('\n  - ')}`;
+    }
+
     function openAlertPopover(type) {
         if (!el.alertPopover || !el.alertTitle || !el.alertBody) return;
         const isFault = type === 'fault';
@@ -112,15 +228,15 @@
             el.alertBody.textContent = isFault ? 'No active faults.' : 'No active warnings.';
         } else if (isFault) {
             el.alertBody.textContent =
-                `faults: ${data.f1}\n` +
-                `faults2: ${data.f2}\n` +
-                `faults3: ${data.f3}\n` +
-                `combined(mask): ${data.total}`;
+                `${formatMaskDetails('faults', data.f1, FAULTS_1)}\n\n` +
+                `${formatMaskDetails('faults2', data.f2, FAULTS_2)}\n\n` +
+                `${formatMaskDetails('faults3', data.f3, FAULTS_3)}\n\n` +
+                `combined(mask): ${hexMask(data.total)}`;
         } else {
             el.alertBody.textContent =
-                `warnings: ${data.w1}\n` +
-                `warnings2: ${data.w2}\n` +
-                `combined(mask): ${data.total}`;
+                `${formatMaskDetails('warnings', data.w1, WARNINGS_1)}\n\n` +
+                `${formatMaskDetails('warnings2', data.w2, WARNINGS_2)}\n\n` +
+                `combined(mask): ${hexMask(data.total)}`;
         }
 
         el.alertPopover.classList.add('show');

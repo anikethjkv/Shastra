@@ -14,6 +14,9 @@ VA -> 3V
 VB -> 5V
 OE -> Active-High (5V)
 
+# Configuration in ASI App
+CAN ID - 40
+Baud Rate - 500KBPS
 # Install python-can module
 sudo pip3 install python-can --break-system-packages
 
@@ -34,7 +37,7 @@ dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25
 sudo reboot now
 
 # Now we have to set the baud rate of the CAN interface.
-sudo ip link set can0 up type can bitrate 250000
+sudo ip link set can0 up type can bitrate 500000
 
 # To check if the CAN interface is working
 ip -details -statistics link show can0
