@@ -1,0 +1,137 @@
+:root {
+    --bg: #e5e7eb;
+    --panel: rgba(17, 24, 39, 0.88);
+    --panel-soft: rgba(31, 41, 55, 0.88);
+    --text: #111827;
+    --text-dim: #6b7280;
+    --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-topbar {
+    height: 74px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.94);
+    border-bottom: 1px solid rgba(107, 114, 128, 0.25);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 5;
+}
+
+.metric-box {
+    min-width: 180px;
+    border-radius: 10px;
+    background: #f9fafb;
+    border: 1px solid rgba(107, 114, 128, 0.22);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.metric-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    color: var(--text-dim);
+}
+
+.metric-value {
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--text);
+}
+
+.metric-value small {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.nav-main {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+.nav-map {
+    position: absolute;
+    inset: 0;
+}
+
+.nav-overlay {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    width: min(360px, calc(100% - 28px));
+    border-radius: 14px;
+    background: var(--panel);
+    color: var(--white);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 4;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+
+.overlay-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+}
+
+.overlay-input {
+    width: 100%;
+    border: none;
+    border-radius: 9px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.overlay-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.overlay-btn {
+    border: none;
+    border-radius: 9px;
+    padding: 9px 10px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.overlay-btn-secondary {
+    background: var(--panel-soft);
+}
+
+.overlay-status {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: #d1d5db;
+}

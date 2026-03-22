@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shastra Navigation</title>
+    <link rel="stylesheet" href="nav.css" />
+</head>
+<body>
+    <header class="nav-topbar">
+        <div class="metric-box">
+            <span class="metric-label">SPEED</span>
+            <span id="nav-speed" class="metric-value">0 <small>KM/H</small></span>
+        </div>
+        <div class="metric-box">
+            <span class="metric-label">BATTERY</span>
+            <span id="nav-battery" class="metric-value">0%</span>
+        </div>
+    </header>
+
+    <main class="nav-main">
+        <div id="nav-map" class="nav-map" aria-label="Navigation map"></div>
+
+        <aside class="nav-overlay" aria-label="Destination controls">
+            <div class="overlay-title">NAVIGATION</div>
+            <input id="nav-destination" class="overlay-input" type="text" placeholder="Search destination" autocomplete="off" />
+            <div class="overlay-actions">
+                <button id="nav-route-btn" class="overlay-btn">Start</button>
+                <button id="nav-clear-btn" class="overlay-btn overlay-btn-secondary">Clear</button>
+            </div>
+            <div id="nav-status" class="overlay-status">LOCATING...</div>
+        </aside>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="nav.js"></script>
+</body>
+</html>
