@@ -3,6 +3,23 @@
 # Navigate to the script's directory (new-type)
 cd "$(dirname "$0")"
 
+# Load optional local environment variables for backend services
+# Priority: .env.local > .env
+ENV_FILE=""
+if [ -f ".env.local" ]; then
+    ENV_FILE=".env.local"
+elif [ -f ".env" ]; then
+    ENV_FILE=".env"
+fi
+
+if [ -n "$ENV_FILE" ]; then
+    echo "Loading environment from $ENV_FILE"
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+fi
+
 echo "Cleaning up old processes..."
 pkill -f "python3 Cancom.py"
 pkill -f "python3 SensorReader.py"

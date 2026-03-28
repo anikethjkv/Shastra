@@ -10,10 +10,39 @@ import os
 import datetime
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import time
+import threading
+
+from firebase_sync import sync_sqlite_to_firebase
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.db")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 PORT = 8080
+FIREBASE_SERVICE_ACCOUNT = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "").strip()
+FIREBASE_DATABASE_URL = os.environ.get("FIREBASE_DATABASE_URL", "").strip()
+FIREBASE_NODE = os.environ.get("FIREBASE_NODE", "sensor_data").strip() or "sensor_data"
+FIREBASE_SYNC_INTERVAL_SEC = max(0, int(os.environ.get("FIREBASE_SYNC_INTERVAL_SEC", "60") or 60))
+
+
+def firebase_sync_configured() -> bool:
+    return bool(FIREBASE_SERVICE_ACCOUNT and FIREBASE_DATABASE_URL)
+
+
+def run_periodic_firebase_sync():
+    if not firebase_sync_configured() or FIREBASE_SYNC_INTERVAL_SEC <= 0:
+        return
+
+    while True:
+        try:
+            result = sync_sqlite_to_firebase(
+                db_path=DB_PATH,
+                service_account_path=FIREBASE_SERVICE_ACCOUNT,
+                database_url=FIREBASE_DATABASE_URL,
+                node=FIREBASE_NODE,
+            )
+            print(f"[firebase-sync] ok tables={result.get('tables', 0)} node={FIREBASE_NODE}")
+        except Exception as exc:
+            print(f"[firebase-sync] error: {exc}")
+        time.sleep(FIREBASE_SYNC_INTERVAL_SEC)
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -29,8 +58,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self._serve_sse()
         elif self.path == "/api/debug":
             self._serve_debug()
+        elif self.path == "/api/upload/firebase":
+            self._serve_firebase_upload()
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path == "/api/upload/firebase":
+            self._serve_firebase_upload()
+            return
+        self.send_response(404)
+        self.end_headers()
 
     def _get_db_data(self):
         try:
@@ -52,6 +90,43 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(payload.encode())
+
+    def _serve_firebase_upload(self):
+        if not firebase_sync_configured():
+            payload = json.dumps(
+                {
+                    "ok": False,
+                    "error": "Missing Firebase config",
+                    "required_env": ["FIREBASE_SERVICE_ACCOUNT", "FIREBASE_DATABASE_URL"],
+                }
+            )
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(payload.encode())
+            return
+
+        try:
+            result = sync_sqlite_to_firebase(
+                db_path=DB_PATH,
+                service_account_path=FIREBASE_SERVICE_ACCOUNT,
+                database_url=FIREBASE_DATABASE_URL,
+                node=FIREBASE_NODE,
+            )
+            payload = json.dumps({"ok": True, "result": result})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(payload.encode())
+        except Exception as exc:
+            payload = json.dumps({"ok": False, "error": str(exc)})
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(payload.encode())
 
     def _serve_sse(self):
         """Server-Sent Events: push data continuously without polling overhead."""
@@ -108,6 +183,15 @@ class ReusableThreadingHTTPServer(ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
+    if firebase_sync_configured() and FIREBASE_SYNC_INTERVAL_SEC > 0:
+        sync_thread = threading.Thread(target=run_periodic_firebase_sync, daemon=True)
+        sync_thread.start()
+        print(f"[firebase-sync] periodic upload enabled every {FIREBASE_SYNC_INTERVAL_SEC}s")
+    elif firebase_sync_configured():
+        print("[firebase-sync] periodic upload disabled (FIREBASE_SYNC_INTERVAL_SEC <= 0)")
+    else:
+        print("[firebase-sync] not configured; set FIREBASE_SERVICE_ACCOUNT and FIREBASE_DATABASE_URL")
+
     server = ReusableThreadingHTTPServer(("0.0.0.0", PORT), DashboardHandler)
     print(f"Shastra Dashboard running → http://localhost:{PORT}")
     try:
