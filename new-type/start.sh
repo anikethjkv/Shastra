@@ -24,6 +24,7 @@ echo "Cleaning up old processes..."
 pkill -f "python3 Cancom.py"
 pkill -f "python3 SensorReader.py"
 pkill -f "python3 api.py"
+pkill -f "convert_and_upload.py"
 kill $(lsof -ti:8080) 2>/dev/null
 sleep 1
 

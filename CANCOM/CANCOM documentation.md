@@ -246,6 +246,15 @@ bit 15 - spare
 14: Reserved
 15: Reserved
 
+# Mode Switching
+# Use the PFS Pin (5), with reference to ground, if the switch is closed it is Race Mode, Else Street Mode
+
+# Reverse Mode
+# Use the Cruise Pin
+
+# Traction Control
+# Enable Bit 13, Features 3
+
 
 
 
