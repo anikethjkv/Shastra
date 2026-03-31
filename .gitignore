@@ -1,0 +1,22 @@
+# Secret files
+serviceAccountKey.json
+google-services.json
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+
+# Node (if any)
+node_modules/
+
+# Python (if any)
+__pycache__/
+
+# Env files
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db
