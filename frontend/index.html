@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1024, height=600, initial-scale=1.0, user-scalable=no">
+    <title>Shastra EV Telemetry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=17">
+</head>
+<body>
+    <div id="dashboard">
+
+        <!-- ═══════════ TOP BAR ═══════════ -->
+        <header id="top-bar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 36 36" width="32" height="32">
+                        <circle cx="18" cy="18" r="17" fill="none" stroke="url(#logoGrad)" stroke-width="2.5"/>
+                        <path d="M20 8 L14 20 H19 L16 28 L24 16 H19 Z" fill="url(#logoGrad)"/>
+                        <defs><linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00b8d4"/>
+                            <stop offset="100%" stop-color="#00e676"/>
+                        </linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="brand-name">SHASTRA</span>
+                    <span class="brand-sub">EV TELEMETRY</span>
+                </div>
+            </div>
+
+            <!-- Mode Selector (center) -->
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="eco">ECO</button>
+                <button class="mode-btn" data-mode="sport">SPORT</button>
+                <button class="mode-btn" data-mode="race">RACE</button>
+            </div>
+
+            <div class="status-badges">
+                <span class="badge badge-bt"><span class="dot dot-green"></span>BT</span>
+                <span class="badge badge-live"><span class="dot dot-red"></span>LIVE</span>
+            </div>
+        </header>
+
+        <!-- ═══════════ 3-COLUMN BODY ═══════════ -->
+        <div id="body-row">
+
+            <!-- Left sidebar deleted; Center panel is now the first child -->
+
+            <!-- ── CENTER: Gauges ────────────────────────── -->
+            <main id="center-panel">
+                <!-- Phase Voltages Row -->
+                <div class="phase-row">
+                    <div class="phase-card phase-u">
+                        <span class="phase-label">PHASE U</span>
+                        <div class="phase-metrics">
+                            <span class="phase-value" id="phase-u">0.0<small>V</small></span>
+                            <span class="phase-current" id="phase-i-u">0.0<small>A</small></span>
+                        </div>
+                    </div>
+                    <div class="phase-card phase-v">
+                        <span class="phase-label">PHASE V</span>
+                        <div class="phase-metrics">
+                            <span class="phase-value" id="phase-v">0.0<small>V</small></span>
+                            <span class="phase-current" id="phase-i-v">0.0<small>A</small></span>
+                        </div>
+                    </div>
+                    <div class="phase-card phase-w">
+                        <span class="phase-label">PHASE W</span>
+                        <div class="phase-metrics">
+                            <span class="phase-value" id="phase-w">0.0<small>V</small></span>
+                            <span class="phase-current" id="phase-i-w">0.0<small>A</small></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gauges Row: RPM + Speed side by side -->
+                <div class="gauges-row">
+                    <div class="gauge-card hockey-box">
+                        <canvas id="rpm-gauge" width="700" height="260"></canvas>
+                    </div>
+                </div>
+
+                <!-- Battery Horizontal Strip -->
+                <div class="battery-strip">
+                    <div class="batt-big">
+                        <span class="soc-pct" id="soc-pct">0%</span>
+                        <span class="hvs-val" id="hvs-voltage">0V</span>
+                    </div>
+                    <div class="battery-visual flex-fill">
+                        <div class="battery-icon-h" id="battery-icon">
+                            <div class="battery-fill-h" id="battery-fill"></div>
+                        </div>
+                    </div>
+                    <div class="batt-details">
+                        <div class="bms-row-h">
+                            <span class="bms-item"><span class="bms-key">CUR</span> <span id="bms-current">0A</span></span>
+                            <span class="bms-item"><span class="bms-key">CYC</span> <span id="bms-cycles">0</span></span>
+                            <span class="bms-item"><span class="bms-key">CAP</span> <span id="bms-cap">—</span></span>
+                            <span class="bms-item"><span class="bms-key">STR</span> <span id="bms-strings">—</span></span>
+                            <span class="soc-label" id="soc-label">—</span>
+                        </div>
+                        <div class="bms-ntc-row-h">
+                            <span class="bms-ntc-title">NTC PROBES</span>
+                            <span class="bms-ntc" id="ntc1">—</span>
+                            <span class="bms-ntc" id="ntc2">—</span>
+                            <span class="bms-ntc" id="ntc3">—</span>
+                            <span class="bms-ntc" id="ntc4">—</span>
+                            <span class="bms-ntc" id="ntc5">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Power / Distance bar -->
+                <div class="info-strip">
+                    <div class="strip-item">
+                        <span class="strip-label">POWER</span>
+                        <span class="strip-value" id="motor-power">0<small>W</small></span>
+                    </div>
+                    <div class="strip-item">
+                        <span class="strip-label">DISTANCE</span>
+                        <span class="strip-value" id="total-distance">0.0<small>km</small></span>
+                    </div>
+                    <div class="strip-item">
+                        <span class="strip-label">FAULTS</span>
+                        <span class="strip-value strip-ok" id="fault-status">NONE</span>
+                    </div>
+                    <div class="strip-item">
+                        <span class="strip-label">WARNINGS</span>
+                        <span class="strip-value strip-ok" id="warn-status">NONE</span>
+                    </div>
+                    <div class="strip-item" style="flex: 1.5; flex-direction: row; justify-content: space-around; align-items: center; padding: 2px 8px;">
+                        <div class="conn-item">
+                            <span class="conn-label">GPS</span>
+                            <span class="conn-val" id="gps-status">—</span>
+                        </div>
+                        <div class="conn-item">
+                            <span class="conn-label">LTE</span>
+                            <span class="conn-val" id="lte-status">—</span>
+                        </div>
+                        <div class="conn-item">
+                            <span class="conn-label">CAN</span>
+                            <span class="conn-val" id="can-status">—</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- ── RIGHT SIDEBAR: Combined Panel ───── -->
+            <aside id="sidebar-main">
+                    <!-- Switch Indicators -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">INDICATORS</div>
+                        <div class="indicator-grid">
+                            <div class="indicator" id="ind-left" title="Left Turn">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>L</span>
+                            </div>
+                            <div class="indicator" id="ind-right" title="Right Turn">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M10 7l5 5-5 5" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <span>R</span>
+                            </div>
+                            <div class="indicator" id="smoke-status" title="Smoke Sensor">
+                                <svg id="smoke-icon" viewBox="0 0 24 24" width="24" height="24">
+                                    <path d="M12 2C8 2 6 6 6 10c0 4-4 6-4 8 0 2.21 1.79 4 4 4h12c2.21 0 4-1.79 4-4 0-2-4-4-4-8 0-4-2-8-6-8zM7.5 14c1.5-1.5 2.5-3.5 2.5-6 0-1.5.5-2.5 2-2.5s2 1 2 2.5c0 2.5 1 4.5 2.5 6-.5 1-1.5 2-2.5 2s-2-1-2.5-2z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>
+                                </svg>
+                                <span id="smoke-label">CLEAR</span>
+                            </div>
+
+                            <div class="indicator" id="ind-brake" title="Brake">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><line x1="12" y1="7" x2="12" y2="13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
+                                <span>BRK</span>
+                            </div>
+                            <div class="indicator" id="ind-head" title="Headlight">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.5-6.5l-1.4 1.4m-9.2 9.2l-1.4 1.4m0-12l1.4 1.4m9.2 9.2l1.4 1.4" stroke="currentColor" stroke-width="1.5"/></svg>
+                                <span>HEAD</span>
+                            </div>
+                            <div class="indicator" id="ind-hibeam" title="High Beam">
+                                <svg viewBox="0 0 24 24" width="24" height="24"><path d="M2 12h3m14 0h3M12 2v3m0 14v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                                <span>HI</span>
+                            </div>
+                        </div>
+                    </div>
+
+    
+                    <!-- Maps Placeholder -->
+                    <div class="sidebar-section maps-section" style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+                        <div class="sidebar-title">MAPS</div>
+                        <div id="map-placeholder" style="flex: 1; background: var(--bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                            <svg viewBox="0 0 100 100" width="100%" height="100%" preserveAspectRatio="none" style="opacity: 0.1; position: absolute;">
+                                <path d="M0,0 L100,100 M0,100 L100,0" stroke="currentColor" stroke-width="0.5" />
+                                <circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="0.5" fill="none" />
+                            </svg>
+                            <div style="text-align: center; z-index: 1;">
+                                <svg viewBox="0 0 24 24" width="32" height="32" fill="var(--text-dim)" style="margin-bottom: 8px;">
+                                    <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+                                </svg>
+                                <div style="font-size: 10px; font-weight: 800; color: var(--text-dim); letter-spacing: 2px;">NAVIGATION</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperatures -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">TEMPS</div>
+                        <div class="temp-list">
+                            <div class="temp-item">
+                                <span class="temp-name">MOTOR</span>
+                                <span class="temp-val" id="motor-temp">0°C</span>
+                            </div>
+                            <div class="temp-item">
+                                <span class="temp-name">CTRL</span>
+                                <span class="temp-val" id="ctrl-temp">0°C</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tilt -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-title">TILT</div>
+                        <div class="tilt-panel">
+                            <canvas id="tilt-canvas" width="70" height="70"></canvas>
+                            <span class="tilt-deg" id="tilt-deg">0.0°</span>
+                        </div>
+                    </div>
+
+
+            </aside>
+        </div>
+
+    </div>
+
+    <script src="gauges.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
