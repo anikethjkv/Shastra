@@ -214,12 +214,7 @@ bit 15 - spare
 15: Reserved Bit 15
 
 # Warnings
-0: Communication Time[error] Cancom.py failed to start. Check cancom.log
-[fallback] SensorReader.py did not stay running. Starting in background...
-[ok] SensorReader.py is running
-[fallback] api.py did not stay running. Starting in background...
-[error] api.py failed to start. Check api.log
-Done! The dashboard is running.out
+0: Communication Timeout
 1: Hall Sensor
 2: Hall Stall
 3: Wheel Speed Sensor
