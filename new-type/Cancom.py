@@ -13,7 +13,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.
 # BMS CAN IDs for battery data polling
 BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
 BMS_POLL_INTERVAL = 2.0
-SWITCH_IDS = {0x40, 0x43}
+SWITCH_IDS = {0x40, 0x43}  # 0x43 = deployed Arduino TX ID; 0x40 = sketch default
 
 # Multipliers from documentation
 SCALES = {
@@ -148,10 +148,10 @@ def parse_can(msg):
 
     # --- TPDO 1: Controller Data ---
     elif cid == 0x1AA and len(d) >= 8:
-        db_write("ctrl_status", d[0])
-        db_write("ctrl_temp", decode_le(d[2:4]))
-        db_write("ctrl_flags", decode_le(d[4:6], signed=False))
-        db_write("ctrl_flags2", decode_le(d[6:8], signed=False))
+        db_write("ctrl_status", decode_le(d[0:2], signed=False))  # Map1: Controller Status (2-byte LE)
+        db_write("ctrl_temp",   decode_le(d[2:4]))                 # Map2: Controller Temperature
+        db_write("ctrl_flags",  decode_le(d[4:6], signed=False))  # Map3: Controller Flags
+        db_write("ctrl_flags2", decode_le(d[6:8], signed=False))  # Map4: Controller Flags2
 
     # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA and len(d) >= 8:
@@ -160,7 +160,8 @@ def parse_can(msg):
         rpm   = decode_le(d[4:6])
         mtemp = decode_le(d[6:8])
 
-        print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM: {rpm} | SPEED: {speed}")
+        # Debug: uncomment below when diagnosing RPM/speed values
+        # print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM: {rpm} | SPEED: {speed}")
 
         db_write("motor_pwr", pwr)
         db_write("vehicle_speed", round(speed, 2))
