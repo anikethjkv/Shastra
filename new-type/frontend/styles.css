@@ -472,6 +472,39 @@ html, body {
     max-width: 100%; height: auto;
 }
 
+.odometer-row {
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 10px;
+    padding: 3px 10px;
+}
+
+.odometer-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+}
+
+.odometer-value {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--text);
+}
+
+.odometer-value small {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
 .gauge-mode-row {
     display: flex;
     justify-content: center;

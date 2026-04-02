@@ -20,6 +20,9 @@ Baud Rate - 500KBPS
 # Install python-can module
 sudo pip3 install python-can --break-system-packages
 
+# Install can-utils 
+sudo apt install can-utils
+
 # After this we have to enable the SPI interface on the RPi.
 sudo raspi-config
 
@@ -255,6 +258,16 @@ bit 15 - spare
 # Traction Control
 # Enable Bit 13, Features 3
 
+# Cruise Control
+
+# Regenerative Braking
+
+Set Features Bit 4, to on/off
+configure RPDO for Bit 4
+configure brake 1 as regen source
+configure the regen braking percentage
+
+# Walk Mode 
 
 
 

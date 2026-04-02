@@ -28,6 +28,7 @@
         phaseIW:      $('phase-i-w'),
         rpmValue:     $('rpm-value'),
         speedValue:   $('speed-value'),
+        odometerValue: $('odometer-value'),
         hvsVoltage:   $('hvs-voltage'),
         socPct:       $('soc-pct'),
         socLabel:     $('soc-label'),
@@ -476,6 +477,7 @@
         setHTML(el.motorPower, pwr + '<small>W</small>');
         const dist = (d.total_distance || 0).toFixed(1);
         setHTML(el.totalDist, dist + '<small>km</small>');
+        setHTML(el.odometerValue, dist + '<small>km</small>');
 
         /* Faults (combined from all sources) */
         const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);

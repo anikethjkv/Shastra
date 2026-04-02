@@ -133,7 +133,7 @@ def parse_can(msg):
     d = msg.data
 
     # --- ARDUINO SWITCHES (ID 0x40) ---
-    if cid == 0x40:
+    if cid == 0x50:
         s = d[0]
         db_write("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
         db_write("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
