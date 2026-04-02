@@ -13,6 +13,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.
 # BMS CAN IDs for battery data polling
 BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
 BMS_POLL_INTERVAL = 2.0
+SWITCH_IDS = {0x40, 0x43}
 
 # Multipliers from documentation
 SCALES = {
@@ -133,24 +134,27 @@ def parse_can(msg):
     d = msg.data
 
     # --- ARDUINO SWITCHES (ID 0x40) ---
-    if cid == 0x50:
+    if cid in SWITCH_IDS and len(d) >= 1:
         s = d[0]
+        hi_beam_raw = 1.0 if (s & (1 << 4)) else 0.0   # bit 5 in 1-based indexing
+        headlight_raw = 1.0 if (s & (1 << 5)) else 0.0 # bit 6 in 1-based indexing
         db_write("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
         db_write("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
         db_write("sw_horn",    1.0 if (s & (1 << 2)) else 0.0)
         db_write("sw_brake",   1.0 if (s & (1 << 3)) else 0.0)
-        db_write("sw_head",    1.0 if (s & (1 << 4)) else 0.0)
-        db_write("sw_hi_beam", 1.0 if (s & (1 << 5)) else 0.0)
+        db_write("sw_hi_beam", hi_beam_raw)
+        db_write("sw_head", headlight_raw)
+        db_write("sw_low_beam", 1.0 if (headlight_raw >= 1.0 and hi_beam_raw < 1.0) else 0.0)
 
     # --- TPDO 1: Controller Data ---
-    elif cid == 0x1AA:
+    elif cid == 0x1AA and len(d) >= 8:
         db_write("ctrl_status", d[0])
         db_write("ctrl_temp", decode_le(d[2:4]))
         db_write("ctrl_flags", decode_le(d[4:6], signed=False))
         db_write("ctrl_flags2", decode_le(d[6:8], signed=False))
 
     # --- TPDO 2: Motor Data ---
-    elif cid == 0x2AA:
+    elif cid == 0x2AA and len(d) >= 8:
         pwr   = decode_le(d[0:2])
         speed = decode_le(d[2:4]) / SCALES["speed"]
         rpm   = decode_le(d[4:6])
@@ -170,27 +174,28 @@ def parse_can(msg):
         db_write("total_distance", total_distance_km)
 
     # --- TPDO 3: Battery Data ---
-    elif cid == 0x3AA:
+    elif cid == 0x3AA and len(d) >= 8:
         db_write("batt_v", decode_le(d[0:2]) / SCALES["voltage"])
         db_write("batt_i", decode_le(d[2:4]) / SCALES["current"])
         db_write("batt_soc", decode_le(d[4:6], signed=False))
         db_write("batt_temp", decode_le(d[6:8]))
 
     # --- TPDO 4: Phase Voltages ---
-    elif cid == 0x4AA:
+    elif cid == 0x4AA and len(d) >= 8:
         db_write("phase_v_a", decode_le(d[0:2]) / SCALES["voltage"])
         db_write("phase_v_b", decode_le(d[2:4]) / SCALES["voltage"])
         db_write("phase_v_c", decode_le(d[4:6]) / SCALES["voltage"])
+        db_write("motor_temp", decode_le(d[6:8]))
 
     # --- TPDO 5: Phase Currents & Faults ---
-    elif cid == 0x5AA:
+    elif cid == 0x5AA and len(d) >= 8:
         db_write("phase_i_a", decode_le(d[0:2]) / SCALES["current"])
         db_write("phase_i_b", decode_le(d[2:4]) / SCALES["current"])
         db_write("phase_i_c", decode_le(d[4:6]) / SCALES["current"])
         db_write("faults", decode_le(d[6:8], signed=False))
 
     # --- TPDO 6: Faults (cont.) & Warnings ---
-    elif cid == 0x6AA:
+    elif cid == 0x6AA and len(d) >= 8:
         db_write("faults2", decode_le(d[0:2], signed=False))
         db_write("faults3", decode_le(d[2:4], signed=False))
         db_write("warnings", decode_le(d[4:6], signed=False))

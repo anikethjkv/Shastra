@@ -5,7 +5,7 @@ VCC -> 5V (Pin 2 or 4)
 GND -> GND (Pin 6 or 9,14,20,25,30,34,39)
 CS -> GPIO8 (Pin 24)
 SCK -> GPIO11 (Pin 23)
-MOSI -> GPIO10 (Pin 19)
+MOSI -> GPIO10 (Pin 19) 
 MISO -> GPIO9 (Pin 21)
 INT -> GPIO25 (Pin 22)
 
