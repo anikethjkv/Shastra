@@ -15,11 +15,13 @@ BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
 BMS_POLL_INTERVAL = 2.0
 SWITCH_IDS = {0x40, 0x43}  # 0x43 = deployed Arduino TX ID; 0x40 = sketch default
 
-# Multipliers from documentation
+# Scale (Multiplier) values from documentation.
+# Formula: real_value = raw_decimal / scale
+# (The ASI app labels these "Multipliers" but the doc says: divide by the scale to get the real-world value)
 SCALES = {
-    "voltage": 32.0,
-    "current": 32.0,
-    "speed": 256.0,
+    "voltage": 32.0,   # V  — raw / 32  = volts
+    "current": 32.0,   # A  — raw / 32  = amps
+    "speed":   256.0,  # km/h — raw / 256 = km/h
 }
 
 def decode_le(data_chunk, signed=True):
@@ -146,27 +148,27 @@ def parse_can(msg):
         db_write("sw_head", headlight_raw)
         db_write("sw_low_beam", 1.0 if (headlight_raw >= 1.0 and hi_beam_raw < 1.0) else 0.0)
 
-    # --- TPDO 1: Controller Data ---
+    # --- TPDO 1: Controller Data (Little Endian) ---
     elif cid == 0x1AA and len(d) >= 8:
-        db_write("ctrl_status", decode_le(d[0:2], signed=False))  # Map1: Controller Status (2-byte LE)
-        db_write("ctrl_temp",   decode_le(d[2:4]))                 # Map2: Controller Temperature
-        db_write("ctrl_flags",  decode_le(d[4:6], signed=False))  # Map3: Controller Flags
-        db_write("ctrl_flags2", decode_le(d[6:8], signed=False))  # Map4: Controller Flags2
+        db_write("ctrl_status", decode_le(d[0:2], signed=False))  # Map1: Controller Status — unsigned register
+        db_write("ctrl_temp",   decode_le(d[2:4], signed=True))   # Map2: Controller Temp — signed (sub-zero possible)
+        db_write("ctrl_flags",  decode_le(d[4:6], signed=False))  # Map3: Controller Flags — unsigned bitmask
+        db_write("ctrl_flags2", decode_le(d[6:8], signed=False))  # Map4: Controller Flags2 — unsigned bitmask
 
-    # --- TPDO 2: Motor Data ---
+    # --- TPDO 2: Motor Data (Little Endian) ---
     elif cid == 0x2AA and len(d) >= 8:
-        pwr   = decode_le(d[0:2])
-        speed = decode_le(d[2:4]) / SCALES["speed"]
-        rpm   = decode_le(d[4:6])
-        mtemp = decode_le(d[6:8])
+        pwr   = decode_le(d[0:2], signed=False)                    # Motor input power: scale=1, raw W = real W
+        speed = decode_le(d[2:4], signed=False) / SCALES["speed"]  # Vehicle speed: raw / 256 = km/h
+        rpm   = decode_le(d[4:6], signed=True)                     # RPM: scale=1, signed (negative = reverse)
+        mtemp = decode_le(d[6:8], signed=True)                     # Motor temp: scale=1, signed °C
 
         # Debug: uncomment below when diagnosing RPM/speed values
-        # print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM: {rpm} | SPEED: {speed}")
+        # print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM raw: {decode_le(d[4:6],signed=False)} | speed raw: {decode_le(d[2:4],signed=False)} | speed: {speed:.2f}")
 
-        db_write("motor_pwr", pwr)
+        db_write("motor_pwr",     pwr)
         db_write("vehicle_speed", round(speed, 2))
-        db_write("motor_rpm", rpm)
-        db_write("motor_temp", mtemp)
+        db_write("motor_rpm",     rpm)
+        db_write("motor_temp",    mtemp)
 
         # Odometer
         now = time.time()
@@ -174,32 +176,29 @@ def parse_can(msg):
         last_time = now
         db_write("total_distance", total_distance_km)
 
-    # --- TPDO 3: Battery Data ---
-    elif cid == 0x3AA and len(d) >= 8:
-        db_write("batt_v", decode_le(d[0:2]) / SCALES["voltage"])
-        db_write("batt_i", decode_le(d[2:4]) / SCALES["current"])
-        db_write("batt_soc", decode_le(d[4:6], signed=False))
-        db_write("batt_temp", decode_le(d[6:8]))
+    # --- TPDO 3 (0x3AA) intentionally ignored ---
+    # Battery data comes exclusively from BMS polling (0x100, 0x101, 0x104, 0x105, 0x106).
+    # The motor controller's TPDO3 battery readings are redundant and less accurate than the BMS.
 
-    # --- TPDO 4: Phase Voltages ---
+    # --- TPDO 4: Phase Voltages (Little Endian) ---
     elif cid == 0x4AA and len(d) >= 8:
-        db_write("phase_v_a", decode_le(d[0:2]) / SCALES["voltage"])
-        db_write("phase_v_b", decode_le(d[2:4]) / SCALES["voltage"])
-        db_write("phase_v_c", decode_le(d[4:6]) / SCALES["voltage"])
-        db_write("motor_temp", decode_le(d[6:8]))
+        db_write("phase_v_a", decode_le(d[0:2], signed=False) / SCALES["voltage"])  # Voltage magnitude: always >= 0
+        db_write("phase_v_b", decode_le(d[2:4], signed=False) / SCALES["voltage"])
+        db_write("phase_v_c", decode_le(d[4:6], signed=False) / SCALES["voltage"])
+        db_write("motor_temp", decode_le(d[6:8], signed=True))                       # Temp: signed
 
-    # --- TPDO 5: Phase Currents & Faults ---
+    # --- TPDO 5: Phase Currents & Faults (Little Endian) ---
     elif cid == 0x5AA and len(d) >= 8:
-        db_write("phase_i_a", decode_le(d[0:2]) / SCALES["current"])
-        db_write("phase_i_b", decode_le(d[2:4]) / SCALES["current"])
-        db_write("phase_i_c", decode_le(d[4:6]) / SCALES["current"])
-        db_write("faults", decode_le(d[6:8], signed=False))
+        db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])   # Current: signed (can be negative in regen)
+        db_write("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
+        db_write("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
+        db_write("faults",    decode_le(d[6:8], signed=False))                       # Fault register: unsigned bitmask
 
-    # --- TPDO 6: Faults (cont.) & Warnings ---
+    # --- TPDO 6: Faults (cont.) & Warnings (Little Endian) ---
     elif cid == 0x6AA and len(d) >= 8:
-        db_write("faults2", decode_le(d[0:2], signed=False))
-        db_write("faults3", decode_le(d[2:4], signed=False))
-        db_write("warnings", decode_le(d[4:6], signed=False))
+        db_write("faults2",   decode_le(d[0:2], signed=False))   # All fault/warning regs: unsigned bitmasks
+        db_write("faults3",   decode_le(d[2:4], signed=False))
+        db_write("warnings",  decode_le(d[4:6], signed=False))
         db_write("warnings2", decode_le(d[6:8], signed=False))
 
     else:
