@@ -24,6 +24,11 @@ SCALES = {
     "speed":   256.0,  # km/h — raw / 256 = km/h
 }
 
+# Maximum physically valid phase voltage (= Vbus/2 ≈ 78V/2 = 39V).
+# 50V gives safe headroom for any momentary spikes.
+# Frames where any phase exceeds this are garbled — discard them.
+MAX_PHASE_V = 50.0
+
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
     return int.from_bytes(data_chunk, byteorder='little', signed=signed)
@@ -186,10 +191,18 @@ def parse_can(msg):
 
     # --- TPDO 4: Phase Voltages (Little Endian) ---
     elif cid == 0x4AA and len(d) >= 8:
-        db_write("phase_v_a", decode_le(d[0:2], signed=False) / SCALES["voltage"])  # Voltage magnitude: always >= 0
-        db_write("phase_v_b", decode_le(d[2:4], signed=False) / SCALES["voltage"])
-        db_write("phase_v_c", decode_le(d[4:6], signed=False) / SCALES["voltage"])
-        db_write("motor_temp", decode_le(d[6:8], signed=True))                       # Temp: signed
+        va = decode_le(d[0:2], signed=False) / SCALES["voltage"]
+        vb = decode_le(d[2:4], signed=False) / SCALES["voltage"]
+        vc = decode_le(d[4:6], signed=False) / SCALES["voltage"]
+
+        # Physics guard: phase voltage never exceeds ~39V (= Vbus/2 on a ~78V system).
+        # Frames where any phase exceeds MAX_PHASE_V are garbled — discard silently.
+        if va <= MAX_PHASE_V and vb <= MAX_PHASE_V and vc <= MAX_PHASE_V:
+            db_write("phase_v_a", va)
+            db_write("phase_v_b", vb)
+            db_write("phase_v_c", vc)
+        # Map4 motor_temp (2004(06)) intentionally omitted — TPDO4's reading is
+        # unreliable (jumps 25/50/100°C per frame). TPDO2 is the sole motor_temp source.
 
     # --- TPDO 5: Phase Currents & Faults (Little Endian) ---
     elif cid == 0x5AA and len(d) >= 8:
