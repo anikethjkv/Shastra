@@ -24,7 +24,7 @@ FLAGS1_LABELS = {
 
 FAULTS1_LABELS = {
     0: "Avg OverVolt", 1: "Avg Phase OverCurr", 2: "Curr Sens Calib", 3: "Curr Sens OverCurr",
-    4: "Contr OverTemp", 5: "Motor Hall Sensor Fault", 6: "Avg Controller Under Voltage", 7: "POST Static",
+    4: "Contr OverTemp", 5: "Motor Hall Sensor Fault", 6: "Avg Motor OverTemp", 7: "POST Static",
     8: "Comm Timeout", 9: "Inst Phase OverCurr", 10: "Motor OverTemp", 11: "Throttle Outside Range",
     12: "Inst Controller OverVolt", 13: "Internal Err", 14: "POST Dynamic", 15: "Inst Controller UnderVolt"
 }
@@ -47,7 +47,7 @@ WARNINGS1_LABELS = {
 
 # --- SYSTEM HELPERS ---
 def setup_can_interface():
-    """Automatically enables can0 at 250000 bitrate if it is off."""
+    """Automatically enables can0 at 500000 bitrate if it is off."""
     try:
         result = subprocess.run(['ip', 'link', 'show', INTERFACE], capture_output=True, text=True)
         if "UP" not in result.stdout:
@@ -73,9 +73,10 @@ def main():
     # Initialize telemetry with 0.0 values
     telemetry = {
         "v": 0.0, "i": 0.0, "soc": 0, "pwr": 0, "rpm": 0, "speed": 0.0,
-        "c_temp": 0, "m_temp": 0, "pA_v": 0.0, "pB_v": 0.0, "pC_v": 0.0,
+        "c_status": 0, "c_temp": 0, "m_temp": 0, "b_temp": 0,
+        "pA_v": 0.0, "pB_v": 0.0, "pC_v": 0.0,
         "pA_i": 0.0, "pB_i": 0.0, "pC_i": 0.0,
-        "f1": 0, "f2": 0, "f3": 0, "w1": 0, "w2": 0, "flags": 0
+        "f1": 0, "f2": 0, "f3": 0, "w1": 0, "w2": 0, "flags": 0, "flags2": 0
     }
 
     bus = None
@@ -93,17 +94,20 @@ def main():
 
             # --- TPDO DECODING LOGIC ---
             if msg.arbitration_id == 0x1AA: # TPDO 1
-                telemetry["c_temp"] = decode_le(msg.data[2:4])
-                telemetry["flags"]  = decode_le(msg.data[4:6], signed=False)
+                telemetry["c_status"] = decode_le(msg.data[0:2], signed=False)  # Map1: Controller Status
+                telemetry["c_temp"]  = decode_le(msg.data[2:4])                 # Map2: Controller Temperature
+                telemetry["flags"]   = decode_le(msg.data[4:6], signed=False)   # Map3: Controller Flags
+                telemetry["flags2"]  = decode_le(msg.data[6:8], signed=False)   # Map4: Controller Flags2
             elif msg.arbitration_id == 0x2AA: # TPDO 2
                 telemetry["pwr"]    = decode_le(msg.data[0:2])
                 telemetry["speed"]  = decode_le(msg.data[2:4]) / SCALES["speed"]
                 telemetry["rpm"]    = decode_le(msg.data[4:6])
                 telemetry["m_temp"] = decode_le(msg.data[6:8])
             elif msg.arbitration_id == 0x3AA: # TPDO 3
-                telemetry["v"]      = decode_le(msg.data[0:2]) / SCALES["voltage"]
-                telemetry["i"]      = decode_le(msg.data[2:4]) / SCALES["current"]
-                telemetry["soc"]    = decode_le(msg.data[4:6], signed=False)
+                telemetry["v"]      = decode_le(msg.data[0:2]) / SCALES["voltage"]   # Map1: Battery Voltage
+                telemetry["i"]      = decode_le(msg.data[2:4]) / SCALES["current"]   # Map2: Battery Current
+                telemetry["soc"]    = decode_le(msg.data[4:6], signed=False)          # Map3: State of Charge
+                telemetry["b_temp"] = decode_le(msg.data[6:8])                        # Map4: Battery Temperature
             elif msg.arbitration_id == 0x4AA: # TPDO 4
                 telemetry["pA_v"]   = decode_le(msg.data[0:2]) / SCALES["voltage"]
                 telemetry["pB_v"]   = decode_le(msg.data[2:4]) / SCALES["voltage"]
@@ -129,7 +133,7 @@ def main():
             print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             print(f"                ASI BAC2000 SYSTEM MONITOR                    ")
             print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            print(f"\033[K [BATTERY] {telemetry['v']:>5.1f}V | {telemetry['i']:>5.1f}A | SOC: {telemetry['soc']}%")
+            print(f"\033[K [BATTERY] {telemetry['v']:>5.1f}V | {telemetry['i']:>5.1f}A | SOC: {telemetry['soc']}% | Temp: {telemetry['b_temp']}°C")
             print(f"\033[K [MOTOR]   {telemetry['pwr']:>5d}W | {telemetry['rpm']:>5d} RPM | {telemetry['speed']:.1f} km/h")
             print(f"\033[K [PHASES]  V: {telemetry['pA_v']:.1f}, {telemetry['pB_v']:.1f}, {telemetry['pC_v']:.1f}")
             print(f"\033[K           I: {telemetry['pA_i']:.1f}, {telemetry['pB_i']:.1f}, {telemetry['pC_i']:.1f}")

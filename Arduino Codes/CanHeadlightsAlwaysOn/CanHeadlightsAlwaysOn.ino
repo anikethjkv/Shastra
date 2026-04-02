@@ -42,9 +42,9 @@ void loop() {
     }
   }
   digitalWrite(headlight, LOW);
-  currentStates |= (1 << i); // This is nothing but currentStates = currentStates | ( 1 << i). This is Left shifting number 1 by i times and oring with currentStates
-    // I am doing this last line to add the bit as Head light stays on always. 
-    // As soom as the bike is powered the head light is On, So this line makes sure that while sending it through can, this Data is received.
+  currentStates |= (1 << 5); // Force bit 5 HIGH — Headlight/Tail always ON at power-up
+    // i is out of scope here; using explicit bit position (1 << 5) for reliability.
+    // As soon as the bike is powered the headlight is ON. This ensures the bit is set in the CAN byte.
 
   // --- 4. SEND TO RPI (0x40) ---
   unsigned long currentTime = millis();
@@ -53,11 +53,11 @@ void loop() {
     CAN0.sendMsgBuf(TX_CAN_ID, 0, 1, &currentStates);
   }
 
-  // Byte order of Can is given by currentStatus
-  // 1   ->   Left Indicator
-  // 2   ->   Right Indicator
-  // 3   ->   Horn
-  // 4   ->   Brake Light
-  // 5   ->   High beam
-  // 6   ->   Headlight and Tail light.
+  // Byte order of CAN byte (bit positions, 0-indexed):
+  // bit 0  ->  Left Indicator
+  // bit 1  ->  Right Indicator
+  // bit 2  ->  Horn
+  // bit 3  ->  Brake Light
+  // bit 4  ->  High Beam
+  // bit 5  ->  Headlight and Tail light  (ALWAYS ON in this sketch)
 }
