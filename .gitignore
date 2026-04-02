@@ -1,25 +1,7 @@
-# Dependencies
+serviceAccountKey.json
+google-services.json
+.dart_tool/
+build/
 node_modules/
-frontend/node_modules/
-
-# Build output
-frontend/dist/
-frontend/release/
-
-# Runtime databases
-*.db
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Python
 __pycache__/
-*.pyc
-
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
+.env

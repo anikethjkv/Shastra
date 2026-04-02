@@ -1,0 +1,37 @@
+name: shastra_ev
+description: Shastra EV Telemetry Dashboard
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.2
+
+  # UI & Gauges
+  syncfusion_flutter_gauges: ^24.1.41
+  fl_chart: ^0.68.0
+  flutter_animate: ^4.5.0
+
+  # Network & Connectivity
+  connectivity_plus: ^6.0.3
+
+  # Utils
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.6
+
+  # Maps — only add back when building for Android/iOS
+  google_maps_flutter: ^2.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
