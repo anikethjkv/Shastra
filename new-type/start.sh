@@ -30,6 +30,35 @@ sleep 1
 
 echo "Opening terminals and starting Shastra Telemetry services..."
 
+START_CANCOM=1
+START_SENSOR=1
+START_API=1
+API_ALREADY_RUNNING=0
+
+preflight_checks() {
+    if ! python3 -c "import can" >/dev/null 2>&1; then
+        echo "[error] Missing Python dependency for Cancom.py: python-can"
+        echo "        Install with: python3 -m pip install python-can"
+        START_CANCOM=0
+    fi
+
+    local api_port_pid
+    api_port_pid="$(lsof -ti:8080 2>/dev/null | head -n 1)"
+    if [ -n "$api_port_pid" ]; then
+        local api_port_cmd
+        api_port_cmd="$(ps -p "$api_port_pid" -o command= 2>/dev/null)"
+        if echo "$api_port_cmd" | grep -q "api.py"; then
+            echo "[info] api.py is already running on port 8080 (pid $api_port_pid)"
+            API_ALREADY_RUNNING=1
+            START_API=0
+        else
+            echo "[warn] Port 8080 is already in use by: ${api_port_cmd:-unknown process}"
+            echo "       Skipping api.py startup to avoid crash."
+            START_API=0
+        fi
+    fi
+}
+
 trigger_firebase_upload() {
     local upload_script="../CANCOM/convert_and_upload.py"
     local upload_log="firebase_upload.log"
@@ -58,6 +87,8 @@ trigger_firebase_upload() {
     echo "[ok] Triggered Firebase upload job -> $upload_log"
 }
 
+preflight_checks
+
 ensure_running() {
     local script="$1"
     local log_file="$2"
@@ -77,40 +108,56 @@ ensure_running() {
 
 # Raspberry Pi Default (LXDE Desktop)
 if command -v lxterminal &> /dev/null; then
-    lxterminal --title="CAN Telemetry" -e "python3 Cancom.py" &
-    lxterminal --title="Sensor Reader" -e "python3 SensorReader.py" &
-    lxterminal --title="API Server" -e "python3 api.py" &
+    if [ "$START_CANCOM" = "1" ]; then lxterminal --title="CAN Telemetry" -e "python3 Cancom.py" & fi
+    if [ "$START_SENSOR" = "1" ]; then lxterminal --title="Sensor Reader" -e "python3 SensorReader.py" & fi
+    if [ "$START_API" = "1" ]; then lxterminal --title="API Server" -e "python3 api.py" & fi
 
 # Secondary Debian Default Fallback
 elif command -v x-terminal-emulator &> /dev/null; then
-    x-terminal-emulator -T "CAN Telemetry" -e "python3 Cancom.py" &
-    x-terminal-emulator -T "Sensor Reader" -e "python3 SensorReader.py" &
-    x-terminal-emulator -T "API Server" -e "python3 api.py" &
+    if [ "$START_CANCOM" = "1" ]; then x-terminal-emulator -T "CAN Telemetry" -e "python3 Cancom.py" & fi
+    if [ "$START_SENSOR" = "1" ]; then x-terminal-emulator -T "Sensor Reader" -e "python3 SensorReader.py" & fi
+    if [ "$START_API" = "1" ]; then x-terminal-emulator -T "API Server" -e "python3 api.py" & fi
 
 # Basic X11 Fallback
 elif command -v xterm &> /dev/null; then
-    xterm -title "CAN Telemetry" -hold -e "python3 Cancom.py" &
-    xterm -title "Sensor Reader" -hold -e "python3 SensorReader.py" &
-    xterm -title "API Server" -hold -e "python3 api.py" &
+    if [ "$START_CANCOM" = "1" ]; then xterm -title "CAN Telemetry" -hold -e "python3 Cancom.py" & fi
+    if [ "$START_SENSOR" = "1" ]; then xterm -title "Sensor Reader" -hold -e "python3 SensorReader.py" & fi
+    if [ "$START_API" = "1" ]; then xterm -title "API Server" -hold -e "python3 api.py" & fi
 
 # Mac OS fallback (if you test it on your Mac)
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    osascript -e 'tell app "Terminal" to do script "cd '\"$(pwd)\"' && python3 Cancom.py"'
-    osascript -e 'tell app "Terminal" to do script "cd '\"$(pwd)\"' && python3 SensorReader.py"'
-    osascript -e 'tell app "Terminal" to do script "cd '\"$(pwd)\"' && python3 api.py"'
+    if [ "$START_CANCOM" = "1" ]; then osascript -e "tell app \"Terminal\" to do script \"cd '$PWD' && python3 Cancom.py\""; fi
+    if [ "$START_SENSOR" = "1" ]; then osascript -e "tell app \"Terminal\" to do script \"cd '$PWD' && python3 SensorReader.py\""; fi
+    if [ "$START_API" = "1" ]; then osascript -e "tell app \"Terminal\" to do script \"cd '$PWD' && python3 api.py\""; fi
 
 # Headless / No GUI fallback
 else
     echo "No GUI terminal found. Running in the background..."
-    nohup python3 Cancom.py > cancom.log 2>&1 &
-    nohup python3 SensorReader.py > sensorreader.log 2>&1 &
-    nohup python3 api.py > api.log 2>&1 &
+    if [ "$START_CANCOM" = "1" ]; then nohup python3 Cancom.py > cancom.log 2>&1 & fi
+    if [ "$START_SENSOR" = "1" ]; then nohup python3 SensorReader.py > sensorreader.log 2>&1 & fi
+    if [ "$START_API" = "1" ]; then nohup python3 api.py > api.log 2>&1 & fi
 fi
 
 sleep 1
-ensure_running "Cancom.py" "cancom.log"
-ensure_running "SensorReader.py" "sensorreader.log"
-ensure_running "api.py" "api.log"
+if [ "$START_CANCOM" = "1" ]; then
+    ensure_running "Cancom.py" "cancom.log"
+else
+    echo "[skip] Cancom.py startup skipped due to failed preflight checks"
+fi
+
+if [ "$START_SENSOR" = "1" ]; then
+    ensure_running "SensorReader.py" "sensorreader.log"
+else
+    echo "[skip] SensorReader.py startup skipped"
+fi
+
+if [ "$START_API" = "1" ]; then
+    ensure_running "api.py" "api.log"
+elif [ "$API_ALREADY_RUNNING" = "1" ]; then
+    echo "[ok] api.py is already running"
+else
+    echo "[skip] api.py startup skipped because port 8080 is busy"
+fi
 trigger_firebase_upload
 
 echo "Done! The dashboard is running."
