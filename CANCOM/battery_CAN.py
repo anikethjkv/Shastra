@@ -2,7 +2,7 @@ import can
 import time
 import struct
 
-BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]  # 0x102 excluded: no defined data layout
+BMS_IDS = [0x100, 0x101, 0x102, 0x104, 0x105, 0x106]
 
 def decode_temp(raw_value):
     # Formula: (Raw - 2731) / 10
