@@ -1,4 +1,5 @@
 import time
+import time
 from gpiozero import Button
 from mpu6050 import mpu6050
 from gps import gps, WATCH_ENABLE, WATCH_NEWSTYLE
@@ -41,7 +42,7 @@ print("General Sensor Collector (Smoke/GPS/MPU) is running...")
 try:
     while True:
         # 1. Smoke Sensor
-        send("smoke_detected", 1.0 if smoke_sensor.is_pressed else 0.0)  # LOW = smoke (pull_up=True, LOW = active)
+        send("smoke_detected", 1.0 if not smoke_sensor.is_pressed else 0.0)
 
         # 2. MPU6050
         if mpu:

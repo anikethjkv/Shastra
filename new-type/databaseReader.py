@@ -53,15 +53,18 @@ def read_database():
 
         print("\n")
 
-        # 3. Historical data note
-        print("\n=== HISTORICAL DATA ===")
-        print("  (historical_readings table not present — only latest_readings is maintained)")
-        print("  To track history, enable WAL logging and query latest_readings over time.")
-        print()
+        # 3. Fetch Last 5 Historical Readings
+        print("=== HISTORICAL DATA (Last 5 Logs) ===")
+        print(f"{'Timestamp':<20} | {'Sensor':<10} | {'Value':<10}")
+        print("-" * 45)
+        cursor.execute("SELECT timestamp, sensor_name, reading_value FROM historical_readings ORDER BY timestamp DESC LIMIT 5")
+        history = cursor.fetchall()
+        for row in history:
+            print(f"{row[0]:<20} | {row[1]:<10} | {row[2]:<10.2f}")
 
         conn.close()
-    except sqlite3.OperationalError as e:
-        print(f"Database table missing or not ready yet: {e}. Waiting for data...")
+    except sqlite3.OperationalError:
+        print("Database not found or tables not created yet. Waiting for data...")
     except Exception as e:
         print(f"Error: {e}")
 
