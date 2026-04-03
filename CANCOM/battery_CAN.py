@@ -1,58 +1,71 @@
 import can
 import time
+import struct
 
-# BMS Identifiers to poll [cite: 12, 13]
-# 0x100: Voltage/Current/RemCap | 0x101: SOC/Health | 0x102: Protection
-# 0x104: System Config | 0x105: NTC1-3 | 0x106: NTC4-6
-BMS_IDS = [0x100, 0x101, 0x102, 0x104, 0x105, 0x106]
+BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]  # 0x102 excluded: no defined data layout
 
-def get_raw_hex():
+def decode_temp(raw_value):
+    # Formula: (Raw - 2731) / 10
+    return (raw_value - 2731) / 10.0
+
+def get_battery_data():
     bus = None
     try:
-        # Fixed 'interface' argument to resolve DeprecationWarning
         bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
-        
-        print(f"{'ID':<6} | {'Raw Hex Data':<25} | {'Description'}")
-        print("-" * 70)
+        print(f"{'ID':<6} | {'Parameter':<22} | {'Value':<15} | {'Unit'}")
+        print("-" * 65)
 
         while True:
             for can_id in BMS_IDS:
-                # Send request command 0x5A 
+                # Request frame with 0x5A
                 msg = can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False)
-                try:
-                    bus.send(msg)
-                except can.CanError:
-                    print(f"Error sending request to ID 0x{can_id:03X}")
-                    continue
+                bus.send(msg)
                 
-                # Wait for response [cite: 5]
                 response = bus.recv(timeout=0.1)
-                
-                if response and response.arbitration_id == can_id:
-                    # Format as space-separated Hex
-                    hex_data = " ".join(f"{b:02X}" for b in response.data)
-                    
-                    # Labels based on protocol [cite: 12, 13]
-                    desc = "Unknown"
-                    if can_id == 0x100: desc = "Volt/Curr/RemCap"
-                    elif can_id == 0x101: desc = "FullCap/Cycles/SOC"
-                    elif can_id == 0x102: desc = "Prot/Balance Status"
-                    elif can_id == 0x104: desc = "Cell Strings/NTC Count"
-                    elif can_id == 0x105: desc = "Temp NTC1 ~ NTC3"
-                    elif can_id == 0x106: desc = "Temp NTC4 ~ NTC6"
-                    
-                    print(f"0x{can_id:03X} | {hex_data:<25} | {desc}")
+                if response and response.arbitration_id == can_id and len(response.data) >= 4:
+                    data = response.data
+
+                    if can_id == 0x100:
+                        # Voltage (Unsigned H), Current (Signed h), RemCap (Unsigned H)
+                        volt_raw, curr_raw, rem_cap_raw = struct.unpack('>HhH', data[0:6])
+                        print(f"0x100  | Total Voltage          | {volt_raw * 0.01:<15.2f} | V")
+                        print(f"0x100  | Current                | {curr_raw * 0.01:<15.2f} | A")
+                        print(f"0x100  | Remaining Capacity     | {rem_cap_raw * 10:<15} | mAh")
+
+                    elif can_id == 0x101:
+                        # FullCap (Unsigned H), Cycles (Signed h), RSOC (Unsigned H)
+                        full_cap_raw, cycles, rsoc = struct.unpack('>HhH', data[0:6])
+                        print(f"0x101  | Full Capacity (Health) | {full_cap_raw * 10:<15} | mAh")
+                        print(f"0x101  | Discharge Cycles       | {cycles:<15} | Times")
+                        print(f"0x101  | State of Charge (SOC)  | {rsoc:<15} | %")
+
+                    elif can_id == 0x104:
+                        # Byte 0: Strings, Byte 1: NTC Count
+                        strings = data[0]
+                        ntc_count = data[1]
+                        print(f"0x104  | Battery Strings        | {strings:<15} | S")
+                        print(f"0x104  | NTC Probe Count        | {ntc_count:<15} | Qty")
+
+                    elif can_id == 0x105:
+                        ntc1, ntc2, ntc3 = struct.unpack('>HHH', data[0:6])
+                        print(f"0x105  | Temp NTC 1             | {decode_temp(ntc1):<15.1f} | °C")
+                        print(f"0x105  | Temp NTC 2             | {decode_temp(ntc2):<15.1f} | °C")
+                        print(f"0x105  | Temp NTC 3             | {decode_temp(ntc3):<15.1f} | °C")
+
+                    elif can_id == 0x106:
+                        # Only decode if data is present (checks for at least 2 bytes per sensor)
+                        if len(data) >= 2:
+                            print(f"0x106  | Temp NTC 4             | {decode_temp(struct.unpack('>H', data[0:2])[0]):<15.1f} | °C")
+                        if len(data) >= 4:
+                            print(f"0x106  | Temp NTC 5             | {decode_temp(struct.unpack('>H', data[2:4])[0]):<15.1f} | °C")
             
-            print("-" * 70)
-            time.sleep(1.5)
+            print("-" * 65)
+            time.sleep(2)
 
     except KeyboardInterrupt:
         print("\nStopping monitor...")
-    except Exception as e:
-        print(f"General Error: {e}")
     finally:
-        if bus:
-            bus.shutdown() # Properly close the socket
+        if bus: bus.shutdown()
 
 if __name__ == "__main__":
-    get_raw_hex()
+    get_battery_data()
