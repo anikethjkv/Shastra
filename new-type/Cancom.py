@@ -88,16 +88,12 @@ def check_remote_start(bus):
     except:
         pass
 
-def poll_bms(bms_bus):
-    """
-    Poll BMS CAN IDs on a DEDICATED socket (bms_bus).
-    Using a separate socket ensures poll_bms recv() never steals TPDO messages
-    from the main bus socket, preventing the 0.5s dead-zone every 2 seconds.
-    """
+def poll_bms(bus):
+    """Poll BMS CAN IDs and write responses to SQLite."""
     for can_id in BMS_IDS:
         try:
-            bms_bus.send(can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False))
-            resp = bms_bus.recv(timeout=0.1)
+            bus.send(can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False))
+            resp = bus.recv(timeout=0.1)
             if not resp or resp.arbitration_id != can_id or len(resp.data) < 4:
                 continue
             d = resp.data
@@ -222,14 +218,6 @@ except Exception as e:
     print(f"CAN Bus Error: {e}")
     exit(1)
 
-# Dedicated socket for BMS polling — keeps its own kernel recv buffer
-# so poll_bms() recv() calls never steal TPDO messages from the main bus.
-try:
-    bms_bus = can.interface.Bus(channel=CAN_INTERFACE, interface='socketcan')
-except Exception as e:
-    print(f"BMS Bus Error: {e}")
-    exit(1)
-
 # Odometer sync from SQLite
 try:
     row = db_conn.execute("SELECT reading_value FROM latest_readings WHERE sensor_name='total_distance'").fetchone()
@@ -264,9 +252,9 @@ try:
             check_remote_start(bus)
             last_remote = now
 
-        # BMS poll every 2s — uses dedicated bms_bus socket, not main bus
+        # BMS poll every 2s
         if now - last_bms > BMS_POLL_INTERVAL:
-            poll_bms(bms_bus)
+            poll_bms(bus)
             last_bms = now
 
 except KeyboardInterrupt:
@@ -278,5 +266,3 @@ finally:
     db_conn.close()
     if bus:
         bus.shutdown()
-    if bms_bus:
-        bms_bus.shutdown()
