@@ -1,0 +1,18 @@
+[Unit]
+Description=Shastra Dashboard Kiosk UI
+After=graphical.target shastra-dashboard.service
+Wants=graphical.target shastra-dashboard.service
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__WORKDIR__
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/__RUN_USER__/.Xauthority
+Environment=DASHBOARD_URL=__DASHBOARD_URL__
+ExecStart=/bin/bash __WORKDIR__/boot/open_kiosk.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

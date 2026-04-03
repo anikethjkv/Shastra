@@ -22,6 +22,10 @@ SCALES = {
     "speed": 256.0,
 }
 
+# Maximum physically valid phase voltage (Vbus/2 ≈ 78V/2 = 39V, 50V gives headroom).
+# Frames where any phase exceeds this are garbled due to ADC ISR non-atomic read.
+MAX_PHASE_V = 50.0
+
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
     return int.from_bytes(data_chunk, byteorder='little', signed=signed)
@@ -155,17 +159,15 @@ def parse_can(msg):
 
     # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA and len(d) >= 8:
-        pwr   = decode_le(d[0:2])
-        speed = decode_le(d[2:4]) / SCALES["speed"]
-        rpm   = decode_le(d[4:6])
-        mtemp = decode_le(d[6:8])
+        pwr   = decode_le(d[0:2], signed=False)                   # Power: unsigned W
+        speed = decode_le(d[2:4], signed=False) / SCALES["speed"] # Speed: unsigned raw/256 = km/h
+        rpm   = decode_le(d[4:6], signed=True)                    # RPM: signed (negative = reverse)
+        mtemp = decode_le(d[6:8], signed=True)                    # Motor temp: signed °C
 
-        print(f"[DEBUG 0x2AA] RAW: {d.hex()} | RPM: {rpm} | SPEED: {speed}")
-
-        db_write("motor_pwr", pwr)
+        db_write("motor_pwr",     pwr)
         db_write("vehicle_speed", round(speed, 2))
-        db_write("motor_rpm", rpm)
-        db_write("motor_temp", mtemp)
+        db_write("motor_rpm",     rpm)
+        db_write("motor_temp",    mtemp)
 
         # Odometer
         now = time.time()
@@ -173,33 +175,39 @@ def parse_can(msg):
         last_time = now
         db_write("total_distance", total_distance_km)
 
-    # --- TPDO 3: Battery Data ---
-    elif cid == 0x3AA and len(d) >= 8:
-        db_write("batt_v", decode_le(d[0:2]) / SCALES["voltage"])
-        db_write("batt_i", decode_le(d[2:4]) / SCALES["current"])
-        db_write("batt_soc", decode_le(d[4:6], signed=False))
-        db_write("batt_temp", decode_le(d[6:8]))
+    # --- TPDO 3: Phase Voltages ---
+    # ASI app TPDO config: Phase Voltages are on 0x3AA (3 maps, unsigned ÷32).
+    # MAX_PHASE_V guard discards frames garbled by ADC ISR non-atomic read.
+    # Battery data comes exclusively from BMS polling (0x100/0x101) not from TPDOs.
+    elif cid == 0x3AA and len(d) >= 6:
+        va = decode_le(d[0:2], signed=False) / SCALES["voltage"]
+        vb = decode_le(d[2:4], signed=False) / SCALES["voltage"]
+        vc = decode_le(d[4:6], signed=False) / SCALES["voltage"]
+        if va <= MAX_PHASE_V and vb <= MAX_PHASE_V and vc <= MAX_PHASE_V:
+            db_write("phase_v_a", va)
+            db_write("phase_v_b", vb)
+            db_write("phase_v_c", vc)
+        # bytes [6:8] not mapped (TPDO3 has 3 maps only) — ignored.
 
-    # --- TPDO 4: Phase Voltages ---
+    # --- TPDO 4: Phase Currents & Faults ---
+    # ASI app TPDO config: Phase Currents are on 0x4AA (signed ÷32, can be negative in regen).
     elif cid == 0x4AA and len(d) >= 8:
-        db_write("phase_v_a", decode_le(d[0:2]) / SCALES["voltage"])
-        db_write("phase_v_b", decode_le(d[2:4]) / SCALES["voltage"])
-        db_write("phase_v_c", decode_le(d[4:6]) / SCALES["voltage"])
-        db_write("motor_temp", decode_le(d[6:8]))
+        db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])
+        db_write("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
+        db_write("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
+        db_write("faults",    decode_le(d[6:8], signed=False))
 
-    # --- TPDO 5: Phase Currents & Faults ---
+    # --- TPDO 5: Faults (cont.) & Warnings ---
+    # ASI app TPDO config: Faults2/3 + Warnings are on 0x5AA.
     elif cid == 0x5AA and len(d) >= 8:
-        db_write("phase_i_a", decode_le(d[0:2]) / SCALES["current"])
-        db_write("phase_i_b", decode_le(d[2:4]) / SCALES["current"])
-        db_write("phase_i_c", decode_le(d[4:6]) / SCALES["current"])
-        db_write("faults", decode_le(d[6:8], signed=False))
-
-    # --- TPDO 6: Faults (cont.) & Warnings ---
-    elif cid == 0x6AA and len(d) >= 8:
-        db_write("faults2", decode_le(d[0:2], signed=False))
-        db_write("faults3", decode_le(d[2:4], signed=False))
-        db_write("warnings", decode_le(d[4:6], signed=False))
+        db_write("faults2",   decode_le(d[0:2], signed=False))
+        db_write("faults3",   decode_le(d[2:4], signed=False))
+        db_write("warnings",  decode_le(d[4:6], signed=False))
         db_write("warnings2", decode_le(d[6:8], signed=False))
+
+    # --- TPDO 6 (0x6AA) not in current ASI TPDO config — no-op ---
+    elif cid == 0x6AA:
+        pass
 
     else:
         # Ignore BMS IDs which we poll actively
