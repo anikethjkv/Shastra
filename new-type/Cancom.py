@@ -12,8 +12,13 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.
 
 # BMS CAN IDs for battery data polling
 BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
-BMS_POLL_INTERVAL = 2.0
+BMS_POLL_INTERVAL = 0.5
 SWITCH_IDS = {0x40, 0x43}
+COLLECTOR_RECV_TIMEOUT = 0.005
+DB_FLUSH_INTERVAL = 0.02
+REMOTE_CHECK_INTERVAL = 0.2
+STALE_TIMEOUT_SEC = 0.4
+BMS_STALE_TIMEOUT_SEC = 1.2
 
 # Multipliers from documentation
 SCALES = {
@@ -38,10 +43,72 @@ db_conn.execute("CREATE TABLE IF NOT EXISTS latest_readings (sensor_name TEXT UN
 db_conn.commit()
 
 sensor_cache = {}
+last_seen = {
+    "switch": 0.0,
+    "tpdo1": 0.0,
+    "tpdo2": 0.0,
+    "tpdo3": 0.0,
+    "tpdo4": 0.0,
+    "tpdo5": 0.0,
+    "tpdo6": 0.0,
+    "bms": 0.0,
+}
+
+SWITCH_KEYS = ["sw_left", "sw_right", "sw_horn", "sw_brake", "sw_head", "sw_hi_beam", "sw_low_beam"]
+TPDO1_KEYS = ["ctrl_status", "ctrl_temp", "ctrl_flags", "ctrl_flags2"]
+TPDO2_KEYS = ["motor_pwr", "vehicle_speed", "motor_rpm", "motor_temp"]
+TPDO3_KEYS = ["batt_v", "batt_i", "batt_soc", "batt_temp"]
+TPDO4_KEYS = ["phase_v_a", "phase_v_b", "phase_v_c", "motor_temp"]
+TPDO5_KEYS = ["phase_i_a", "phase_i_b", "phase_i_c", "faults"]
+TPDO6_KEYS = ["faults2", "faults3", "warnings", "warnings2"]
+BMS_KEYS = [
+    "bms_total_voltage", "bms_current", "bms_rem_cap", "bms_full_cap", "bms_cycles", "bms_soc",
+    "bms_strings", "bms_ntc_count", "bms_ntc1", "bms_ntc2", "bms_ntc3", "bms_ntc4", "bms_ntc5",
+]
 
 def db_write(name, value):
     """Buffer sensor value in memory."""
     sensor_cache[name] = float(value)
+
+
+def mark_seen(group, now=None):
+    last_seen[group] = now if now is not None else time.time()
+
+
+def zero_group(keys):
+    for key in keys:
+        db_write(key, 0.0)
+
+
+def reset_stale_signals(now):
+    stale_groups = [
+        ("switch", SWITCH_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo1", TPDO1_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo2", TPDO2_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo3", TPDO3_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo4", TPDO4_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo5", TPDO5_KEYS, STALE_TIMEOUT_SEC),
+        ("tpdo6", TPDO6_KEYS, STALE_TIMEOUT_SEC),
+        ("bms", BMS_KEYS, BMS_STALE_TIMEOUT_SEC),
+    ]
+
+    for group, keys, timeout in stale_groups:
+        seen_ts = last_seen.get(group, 0.0)
+        if seen_ts > 0 and (now - seen_ts) > timeout:
+            zero_group(keys)
+            last_seen[group] = now
+
+
+def initialize_default_values():
+    zero_group(SWITCH_KEYS)
+    zero_group(TPDO1_KEYS)
+    zero_group(TPDO2_KEYS)
+    zero_group(TPDO3_KEYS)
+    zero_group(TPDO4_KEYS)
+    zero_group(TPDO5_KEYS)
+    zero_group(TPDO6_KEYS)
+    zero_group(BMS_KEYS)
+    db_flush()
 
 def db_flush():
     """Batch write only the newest values to SQLite, drastically reducing disk IO."""
@@ -119,6 +186,7 @@ def poll_bms(bus):
                     db_write("bms_ntc4", round(decode_bms_temp(struct.unpack('>H', d[0:2])[0]), 1))
                 if len(d) >= 4:
                     db_write("bms_ntc5", round(decode_bms_temp(struct.unpack('>H', d[2:4])[0]), 1))
+            mark_seen("bms")
         except:
             continue
     db_flush()
@@ -135,6 +203,7 @@ def parse_can(msg):
 
     # --- ARDUINO SWITCHES (ID 0x40) ---
     if cid in SWITCH_IDS and len(d) >= 1:
+        mark_seen("switch")
         s = d[0]
         hi_beam_raw = 1.0 if (s & (1 << 4)) else 0.0   # bit 5 in 1-based indexing
         headlight_raw = 1.0 if (s & (1 << 5)) else 0.0 # bit 6 in 1-based indexing
@@ -148,6 +217,7 @@ def parse_can(msg):
 
     # --- TPDO 1: Controller Data ---
     elif cid == 0x1AA and len(d) >= 8:
+        mark_seen("tpdo1")
         db_write("ctrl_status", d[0])
         db_write("ctrl_temp", decode_le(d[2:4]))
         db_write("ctrl_flags", decode_le(d[4:6], signed=False))
@@ -155,6 +225,7 @@ def parse_can(msg):
 
     # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA and len(d) >= 8:
+        mark_seen("tpdo2")
         pwr   = decode_le(d[0:2])
         speed = decode_le(d[2:4]) / SCALES["speed"]
         rpm   = decode_le(d[4:6])
@@ -175,6 +246,7 @@ def parse_can(msg):
 
     # --- TPDO 3: Battery Data ---
     elif cid == 0x3AA and len(d) >= 8:
+        mark_seen("tpdo3")
         db_write("batt_v", decode_le(d[0:2]) / SCALES["voltage"])
         db_write("batt_i", decode_le(d[2:4]) / SCALES["current"])
         db_write("batt_soc", decode_le(d[4:6], signed=False))
@@ -182,6 +254,7 @@ def parse_can(msg):
 
     # --- TPDO 4: Phase Voltages ---
     elif cid == 0x4AA and len(d) >= 8:
+        mark_seen("tpdo4")
         db_write("phase_v_a", decode_le(d[0:2]) / SCALES["voltage"])
         db_write("phase_v_b", decode_le(d[2:4]) / SCALES["voltage"])
         db_write("phase_v_c", decode_le(d[4:6]) / SCALES["voltage"])
@@ -189,6 +262,7 @@ def parse_can(msg):
 
     # --- TPDO 5: Phase Currents & Faults ---
     elif cid == 0x5AA and len(d) >= 8:
+        mark_seen("tpdo5")
         db_write("phase_i_a", decode_le(d[0:2]) / SCALES["current"])
         db_write("phase_i_b", decode_le(d[2:4]) / SCALES["current"])
         db_write("phase_i_c", decode_le(d[4:6]) / SCALES["current"])
@@ -196,6 +270,7 @@ def parse_can(msg):
 
     # --- TPDO 6: Faults (cont.) & Warnings ---
     elif cid == 0x6AA and len(d) >= 8:
+        mark_seen("tpdo6")
         db_write("faults2", decode_le(d[0:2], signed=False))
         db_write("faults3", decode_le(d[2:4], signed=False))
         db_write("warnings", decode_le(d[4:6], signed=False))
@@ -226,6 +301,7 @@ except:
     total_distance_km = 0.0
 
 last_time = time.time()
+initialize_default_values()
 last_flush = time.time()
 last_remote = time.time()
 last_bms = time.time()
@@ -235,20 +311,21 @@ print("Shastra CAN Collector running (direct SQLite writes)...")
 
 try:
     while True:
-        msg = bus.recv(timeout=0.01)
+        msg = bus.recv(timeout=COLLECTOR_RECV_TIMEOUT)
         if msg:
             parse_can(msg)
             msg_count += 1
 
         now = time.time()
+        reset_stale_signals(now)
 
-        # Flush SQLite every 50ms
-        if now - last_flush > 0.05:
+        # Flush SQLite every 20ms
+        if now - last_flush > DB_FLUSH_INTERVAL:
             db_flush()
             last_flush = now
 
-        # Remote start check every 500ms
-        if now - last_remote > 0.5:
+        # Remote start check every 200ms
+        if now - last_remote > REMOTE_CHECK_INTERVAL:
             check_remote_start(bus)
             last_remote = now
 
