@@ -30,7 +30,7 @@ def read_database():
             "bms_total_voltage", "bms_current", "bms_rem_cap",
             "bms_full_cap", "bms_cycles", "bms_soc",
             "bms_strings", "bms_ntc_count",
-            "bms_ntc1", "bms_ntc2", "bms_ntc3", "bms_ntc4", "bms_ntc5", "bms_ntc6"
+            "bms_ntc1", "bms_ntc2", "bms_ntc3", "bms_ntc4", "bms_ntc5"
         ]
         bms_units = {
             "bms_total_voltage": "V", "bms_current": "A",
@@ -38,7 +38,7 @@ def read_database():
             "bms_cycles": "cycles", "bms_soc": "%",
             "bms_strings": "S", "bms_ntc_count": "probes",
             "bms_ntc1": "°C", "bms_ntc2": "°C", "bms_ntc3": "°C",
-            "bms_ntc4": "°C", "bms_ntc5": "°C", "bms_ntc6": "°C"
+            "bms_ntc4": "°C", "bms_ntc5": "°C"
         }
         has_bms = any(k in readings for k in bms_keys)
         if has_bms:
