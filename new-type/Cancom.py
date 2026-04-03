@@ -185,38 +185,43 @@ def parse_can(msg):
         last_time = now
         db_write("total_distance", total_distance_km)
 
-    # --- TPDO 3 (0x3AA) intentionally ignored ---
-    # Battery data comes exclusively from BMS polling (0x100, 0x101, 0x104, 0x105, 0x106).
-    # The motor controller's TPDO3 battery readings are redundant and less accurate than the BMS.
-
-    # --- TPDO 4: Phase Voltages (Little Endian) ---
-    elif cid == 0x4AA and len(d) >= 8:
+    # --- TPDO 3: Phase Voltages (Little Endian) ---
+    # TPDO3 configuration changed: Phase Voltages moved from 4AA to 3AA.
+    # The ADC non-atomic-read tearing issue still applies here — same MAX_PHASE_V guard.
+    elif cid == 0x3AA and len(d) >= 6:
         va = decode_le(d[0:2], signed=False) / SCALES["voltage"]
         vb = decode_le(d[2:4], signed=False) / SCALES["voltage"]
         vc = decode_le(d[4:6], signed=False) / SCALES["voltage"]
-
-        # Physics guard: phase voltage never exceeds ~39V (= Vbus/2 on a ~78V system).
-        # Frames where any phase exceeds MAX_PHASE_V are garbled — discard silently.
+        # Physics guard: discard entire frame if any phase exceeds Vbus/2 + headroom.
+        # Caused by BAC2000 ADC ISR preempting the TPDO builder mid-pack.
         if va <= MAX_PHASE_V and vb <= MAX_PHASE_V and vc <= MAX_PHASE_V:
             db_write("phase_v_a", va)
             db_write("phase_v_b", vb)
             db_write("phase_v_c", vc)
-        # Map4 motor_temp (2004(06)) intentionally omitted — TPDO4's reading is
-        # unreliable (jumps 25/50/100°C per frame). TPDO2 is the sole motor_temp source.
+        # bytes [6:8] not mapped in TPDO3 (3 maps only) — ignored.
 
-    # --- TPDO 5: Phase Currents & Faults (Little Endian) ---
-    elif cid == 0x5AA and len(d) >= 8:
-        db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])   # Current: signed (can be negative in regen)
+    # --- TPDO 4: Phase Currents & Faults (Little Endian) ---
+    # TPDO4 configuration changed: Phase Currents moved from 5AA to 4AA.
+    elif cid == 0x4AA and len(d) >= 8:
+        db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])   # Signed: negative in regen
         db_write("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
         db_write("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
-        db_write("faults",    decode_le(d[6:8], signed=False))                       # Fault register: unsigned bitmask
+        db_write("faults",    decode_le(d[6:8], signed=False))                       # Unsigned bitmask
 
-    # --- TPDO 6: Faults (cont.) & Warnings (Little Endian) ---
-    elif cid == 0x6AA and len(d) >= 8:
-        db_write("faults2",   decode_le(d[0:2], signed=False))   # All fault/warning regs: unsigned bitmasks
+    # --- TPDO 5: Faults (cont.) & Warnings (Little Endian) ---
+    # TPDO5 configuration changed: Warnings moved from 6AA to 5AA.
+    elif cid == 0x5AA and len(d) >= 8:
+        db_write("faults2",   decode_le(d[0:2], signed=False))   # Unsigned bitmasks
         db_write("faults3",   decode_le(d[2:4], signed=False))
         db_write("warnings",  decode_le(d[4:6], signed=False))
-        db_write("warnings2", decode_le(d[6:8], signed=False))
+        db_write("warnings2", decode_le(d[6:8], signed=False))   # Active: bits3,4,5 = Dynamic Flash Full/Read/Write Error
+
+    # --- TPDO 6 (0x6AA) no longer in TPDO config ---
+    # Previously held Faults2/Warnings — now carried by 5AA above.
+    # Kept as no-op in case config is reverted in ASI app.
+    elif cid == 0x6AA and len(d) >= 8:
+        pass  # No-op: 6AA not currently mapped in ASI app TPDO config.
+
 
     else:
         # Ignore BMS IDs which we poll actively

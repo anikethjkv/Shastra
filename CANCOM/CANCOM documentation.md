@@ -112,25 +112,19 @@ Map2 - Vehicle Speed - 2004 (05) - 256
 Map3 - motor RPM - 2004 (08) - 1
 Map4 - Motor temperature - 2004 (06) - 1
 
-TPDO 3 - Battery Data - CAN ID - Scale (Multipler)
-Map1 - Battery Voltage - 2004 (0A) - 32
-Map2 - Battery Current - 2004 (0B) - 32
-Map3 - State of Charge - 2004 (0C) - 1
-Map4 - temperature - 2004 (18) - 1
 
-TPDO 4 - Motor Phase Voltages - CAN ID - Value Type - Scale (Multipler)
+TPDO 3 - Motor Phase Voltages - CAN ID - Value Type - Scale (Multipler)
 Map1 - Phase A voltage - 2004 (1E) - short - 32
 Map2 - Phase B voltage - 2004 (1F) - short - 32
 Map3 - Phase C voltage - 2004 (20) - short - 32
-Map4 - Motor temp - 2004 (06) - short - 1
 
-TPDO 5 - Motor Phase Currents, Faults - CAN ID - Value Type - Scale (Multipler)
+TPDO 4 - Motor Phase Currents, Faults - CAN ID - Value Type - Scale (Multipler)
 Map1 - Phase A current -  2004 (1B) - short - 32
 Map2 - Phase B current -  2004 (1C) - short - 32
 Map3 - Phase C current -  2004 (1D) - short - 32
 Map4 - faults - 2004(03) - short - 1
 
-TPDO 6 - Faults (cont.), Warnings
+TPDO 5 - Faults (cont.), Warnings
 Map1 - faults2 - 2004(2C) - short - 1
 Map2 - faults3 - 2005(2C) - short - 1
 Map3 - warnings - 2004(16) - short - 1
