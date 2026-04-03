@@ -107,19 +107,19 @@ Map3 - Controller Flags - 2005(08) - 1
 Map4 - Controller Flags2 - 2007(29) - 1
 
 TPDO 2 - Motor Data - CAN ID - Scale (Multiplier)
-Map1 - Motor input power - 2005 (0F) - 1
+Map1 - Motor input power - 2005 (0F) - 1 
 Map2 - Vehicle Speed - 2004 (05) - 256
 Map3 - motor RPM - 2004 (08) - 1
-Map4 - Motor temperature - 2004 (06) - 1
+Map4 - Motor temperature - 2004 (06) - 1 - 20-45
 
 TPDO 3 - Battery Data - CAN ID - Scale (Multipler)
-Map1 - Battery Voltage - 2004 (0A) - 32
+Map1 - Battery Voltage - 2004 (0A) - 32 
 Map2 - Battery Current - 2004 (0B) - 32
 Map3 - State of Charge - 2004 (0C) - 1
 Map4 - temperature - 2004 (18) - 1
 
 TPDO 4 - Motor Phase Voltages - CAN ID - Value Type - Scale (Multipler)
-Map1 - Phase A voltage - 2004 (1E) - short - 32
+Map1 - Phase A voltage - 2004 (1E) - short - 32 -max 50
 Map2 - Phase B voltage - 2004 (1F) - short - 32
 Map3 - Phase C voltage - 2004 (20) - short - 32
 Map4 - Motor temp - 2004 (06) - short - 1

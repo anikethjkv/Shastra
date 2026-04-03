@@ -22,9 +22,9 @@ SCALES = {
     "speed": 256.0,
 }
 
-# Maximum physically valid phase voltage (Vbus/2 ≈ 78V/2 = 39V, 50V gives headroom).
-# Frames where any phase exceeds this are garbled due to ADC ISR non-atomic read.
-MAX_PHASE_V = 50.0
+# Maximum physically valid phase voltage.
+# 45V is the hard ceiling — anything at or above is a garbled ADC frame, discard entirely.
+MAX_PHASE_V = 45.0
 
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
@@ -90,6 +90,17 @@ def check_remote_start(bus):
     except:
         pass
 
+# BMS validity limits — values outside these ranges are garbled frames, silently dropped.
+MAX_SOC      = 100    # SOC is a percentage: 0–100. Anything above = erroneous.
+MAX_NTC_TEMP = 100.0  # NTC sensors cannot physically read above 100°C on this pack.
+MIN_NTC_TEMP = -40.0  # Sub -40°C is equally unphysical for a Li-ion pack.
+
+def _write_ntc(key, raw):
+    """Decode BMS NTC raw and write only if within physical bounds."""
+    temp = round(decode_bms_temp(raw), 1)
+    if MIN_NTC_TEMP <= temp <= MAX_NTC_TEMP:
+        db_write(key, temp)
+
 def poll_bms(bus):
     """Poll BMS CAN IDs and write responses to SQLite."""
     for can_id in BMS_IDS:
@@ -103,26 +114,29 @@ def poll_bms(bus):
             if can_id == 0x100:
                 v_raw, i_raw, cap_raw = struct.unpack('>HhH', d[0:6])
                 db_write("bms_total_voltage", round(v_raw * 0.01, 2))
-                db_write("bms_current", round(i_raw * 0.01, 2))
-                db_write("bms_rem_cap", cap_raw * 10)
+                db_write("bms_current",       round(i_raw * 0.01, 2))
+                db_write("bms_rem_cap",        cap_raw * 10)
             elif can_id == 0x101:
                 fc_raw, cyc, rsoc = struct.unpack('>HhH', d[0:6])
                 db_write("bms_full_cap", fc_raw * 10)
-                db_write("bms_cycles", cyc)
-                db_write("bms_soc", rsoc)
+                db_write("bms_cycles",   cyc)
+                # SOC guard: discard if outside 0–100% (erroneous reads like 1386% ignored)
+                if 0 <= rsoc <= MAX_SOC:
+                    db_write("bms_soc", rsoc)
             elif can_id == 0x104:
-                db_write("bms_strings", d[0])
+                db_write("bms_strings",   d[0])
                 db_write("bms_ntc_count", d[1])
             elif can_id == 0x105:
                 n1, n2, n3 = struct.unpack('>HHH', d[0:6])
-                db_write("bms_ntc1", round(decode_bms_temp(n1), 1))
-                db_write("bms_ntc2", round(decode_bms_temp(n2), 1))
-                db_write("bms_ntc3", round(decode_bms_temp(n3), 1))
+                # NTC guard: discard individual sensors if outside -40°C to 100°C
+                _write_ntc("bms_ntc1", n1)
+                _write_ntc("bms_ntc2", n2)
+                _write_ntc("bms_ntc3", n3)
             elif can_id == 0x106:
                 if len(d) >= 2:
-                    db_write("bms_ntc4", round(decode_bms_temp(struct.unpack('>H', d[0:2])[0]), 1))
+                    _write_ntc("bms_ntc4", struct.unpack('>H', d[0:2])[0])
                 if len(d) >= 4:
-                    db_write("bms_ntc5", round(decode_bms_temp(struct.unpack('>H', d[2:4])[0]), 1))
+                    _write_ntc("bms_ntc5", struct.unpack('>H', d[2:4])[0])
         except:
             continue
     db_flush()
@@ -175,39 +189,38 @@ def parse_can(msg):
         last_time = now
         db_write("total_distance", total_distance_km)
 
-    # --- TPDO 3: Phase Voltages ---
-    # ASI app TPDO config: Phase Voltages are on 0x3AA (3 maps, unsigned ÷32).
-    # MAX_PHASE_V guard discards frames garbled by ADC ISR non-atomic read.
-    # Battery data comes exclusively from BMS polling (0x100/0x101) not from TPDOs.
-    elif cid == 0x3AA and len(d) >= 6:
+    # --- TPDO 3 (0x3AA): ignored ---
+    # Battery data comes exclusively from BMS polling (0x100/0x101).
+    # elif cid == 0x3AA: pass
+
+    # --- TPDO 4: Phase Voltages ---
+    # Map1=PhaseA, Map2=PhaseB, Map3=PhaseC — unsigned ÷32.
+    # 45V hard ceiling: frames with any phase ≥45V are ADC-torn garbage, discarded entirely.
+    # motor_temp intentionally NOT read here — TPDO2 (0x2AA) is the sole motor_temp source.
+    elif cid == 0x4AA and len(d) >= 6:
         va = decode_le(d[0:2], signed=False) / SCALES["voltage"]
         vb = decode_le(d[2:4], signed=False) / SCALES["voltage"]
         vc = decode_le(d[4:6], signed=False) / SCALES["voltage"]
-        if va <= MAX_PHASE_V and vb <= MAX_PHASE_V and vc <= MAX_PHASE_V:
+        if va < MAX_PHASE_V and vb < MAX_PHASE_V and vc < MAX_PHASE_V:
             db_write("phase_v_a", va)
             db_write("phase_v_b", vb)
             db_write("phase_v_c", vc)
-        # bytes [6:8] not mapped (TPDO3 has 3 maps only) — ignored.
 
-    # --- TPDO 4: Phase Currents & Faults ---
-    # ASI app TPDO config: Phase Currents are on 0x4AA (signed ÷32, can be negative in regen).
-    elif cid == 0x4AA and len(d) >= 8:
+    # --- TPDO 5: Phase Currents & Faults ---
+    # Map1=PhaseAI, Map2=PhaseBi, Map3=PhaseCI — signed ÷32 (negative = regen).
+    # Map4=faults — unsigned bitmask.
+    elif cid == 0x5AA and len(d) >= 8:
         db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])
         db_write("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
         db_write("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
         db_write("faults",    decode_le(d[6:8], signed=False))
 
-    # --- TPDO 5: Faults (cont.) & Warnings ---
-    # ASI app TPDO config: Faults2/3 + Warnings are on 0x5AA.
-    elif cid == 0x5AA and len(d) >= 8:
+    # --- TPDO 6: Faults (cont.) & Warnings ---
+    elif cid == 0x6AA and len(d) >= 8:
         db_write("faults2",   decode_le(d[0:2], signed=False))
         db_write("faults3",   decode_le(d[2:4], signed=False))
         db_write("warnings",  decode_le(d[4:6], signed=False))
         db_write("warnings2", decode_le(d[6:8], signed=False))
-
-    # --- TPDO 6 (0x6AA) not in current ASI TPDO config — no-op ---
-    elif cid == 0x6AA:
-        pass
 
     else:
         # Ignore BMS IDs which we poll actively
