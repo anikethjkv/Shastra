@@ -1,44 +1,58 @@
 import can
 import time
 
-def probe_bms_config():
-    # Configure your CAN interface
-    # For PCAN-USB at 500kbps (BMS Default)
-    # Note: If your BAC2000 8MHz clock is active, you might need to try 250000
-    bus = can.interface.Bus(interface='pcan', channel='PCAN_USBBUS1', bitrate=500000)
+# BMS Identifiers to poll [cite: 12, 13]
+# 0x100: Voltage/Current/RemCap | 0x101: SOC/Health | 0x102: Protection
+# 0x104: System Config | 0x105: NTC1-3 | 0x106: NTC4-6
+BMS_IDS = [0x100, 0x101, 0x102, 0x104, 0x105, 0x106]
 
-    # Construct the Read Command [cite: 1245, 1253]
-    # ID 0x137 is Protection Parameter 29-32
-    # Data 0x5A with length 1 tells the BMS to 'Read' 
-    msg = can.Message(
-        arbitration_id=0x137,
-        data=[0x5A],
-        is_extended_id=False
-    )
-
+def get_raw_hex():
+    bus = None
     try:
-        print("Sending Read Request to BMS (ID 0x137)...")
-        bus.send(msg)
+        # Fixed 'interface' argument to resolve DeprecationWarning
+        bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
+        
+        print(f"{'ID':<6} | {'Raw Hex Data':<25} | {'Description'}")
+        print("-" * 70)
 
-        # Wait up to 2 seconds for the 8-byte response 
-        response = bus.recv(2.0)
-
-        if response:
-            print(f"Response Received from ID {hex(response.arbitration_id)}:")
-            print(f"Data (Hex): {' '.join([hex(b) for b in response.data])}")
-            print(f"Data (Dec): {list(response.data)}")
+        while True:
+            for can_id in BMS_IDS:
+                # Send request command 0x5A 
+                msg = can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False)
+                try:
+                    bus.send(msg)
+                except can.CanError:
+                    print(f"Error sending request to ID 0x{can_id:03X}")
+                    continue
+                
+                # Wait for response [cite: 5]
+                response = bus.recv(timeout=0.1)
+                
+                if response and response.arbitration_id == can_id:
+                    # Format as space-separated Hex
+                    hex_data = " ".join(f"{b:02X}" for b in response.data)
+                    
+                    # Labels based on protocol [cite: 12, 13]
+                    desc = "Unknown"
+                    if can_id == 0x100: desc = "Volt/Curr/RemCap"
+                    elif can_id == 0x101: desc = "FullCap/Cycles/SOC"
+                    elif can_id == 0x102: desc = "Prot/Balance Status"
+                    elif can_id == 0x104: desc = "Cell Strings/NTC Count"
+                    elif can_id == 0x105: desc = "Temp NTC1 ~ NTC3"
+                    elif can_id == 0x106: desc = "Temp NTC4 ~ NTC6"
+                    
+                    print(f"0x{can_id:03X} | {hex_data:<25} | {desc}")
             
-            # Identify the Function Configuration 
-            # BYTE 2 and 3 are the keys to the baud rate
-            if len(response.data) >= 4:
-                print(f"Target Bytes (2 & 3): {hex(response.data[2])} {hex(response.data[3])}")
-        else:
-            print("No response received. Check wiring, termination, or baud rate.")
+            print("-" * 70)
+            time.sleep(1.5)
 
-    except can.CanError as e:
-        print(f"Message NOT sent: {e}")
+    except KeyboardInterrupt:
+        print("\nStopping monitor...")
+    except Exception as e:
+        print(f"General Error: {e}")
     finally:
-        bus.shutdown()
+        if bus:
+            bus.shutdown() # Properly close the socket
 
 if __name__ == "__main__":
-    probe_bms_config()
+    get_raw_hex()
