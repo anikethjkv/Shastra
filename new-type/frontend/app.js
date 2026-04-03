@@ -422,9 +422,9 @@
             prev.spd = spdRound;
         }
 
-        /* Battery / SOC — exclusively from BMS polling (bms_total_voltage, bms_soc) */
-        const hvs = (d.bms_total_voltage || 0).toFixed(0);
-        const soc = Math.round(d.bms_soc || 0);
+        /* Battery / SOC */
+        const hvs = (d.bms_total_voltage || d.batt_v || 0).toFixed(0);
+        const soc = Math.round(d.bms_soc || d.batt_soc || 0);
         setText(el.hvsVoltage, hvs + 'V');
         setText(el.socPct, soc + '%');
         const ss = socStatus(soc);
@@ -437,8 +437,8 @@
                 : 'linear-gradient(90deg, #d32f2f, #ef5350)';
         }
 
-        /* BMS extras — exclusively from BMS polling (bms_current) */
-        const cur = (d.bms_current || 0).toFixed(1);
+        /* BMS extras */
+        const cur = (d.bms_current || d.batt_i || 0).toFixed(1);
         setText(el.bmsCurrent, cur + 'A');
 
         /* BMS capacity & strings */
@@ -518,10 +518,10 @@
             if (el.topWarnBtn) el.topWarnBtn.title = 'No active warnings';
         }
 
-        /* Temperatures — motor/ctrl from TPDO1/2, battery from BMS NTC1 */
+        /* Temperatures */
         setText(el.motorTemp, Math.round(d.motor_temp || 0) + '°C');
-        setText(el.ctrlTemp,  Math.round(d.ctrl_temp  || 0) + '°C');
-        setText(el.battTemp,  Math.round(d.bms_ntc1   || 0) + '°C');  // batt_temp no longer written (3AA ignored)
+        setText(el.ctrlTemp, Math.round(d.ctrl_temp || 0) + '°C');
+        setText(el.battTemp, Math.round(d.batt_temp || d.bms_ntc1 || 0) + '°C');
 
         /* Smoke sensor */
         const smokeDetected = (d.smoke_detected || 0) >= 1;
