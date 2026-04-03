@@ -103,9 +103,16 @@ def poll_bms(bms_bus):
         try:
             bms_bus.send(can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False))
             resp = bms_bus.recv(timeout=0.1)
-            if not resp or resp.arbitration_id != can_id or len(resp.data) < 4:
+            if not resp or resp.arbitration_id != can_id:
                 continue
             d = resp.data
+
+            # Per protocol: 6+2BYTE IDs need 8 bytes (6 data + 2 CRC)
+            #                2+2BYTE ID  0x104 needs 4 bytes (2 data + 2 CRC)
+            # CRC bytes [6:8] are NOT decoded — hardware validates them.
+            min_len = 4 if can_id == 0x104 else 8
+            if len(d) < min_len:
+                continue
 
             if can_id == 0x100:
                 v_raw, i_raw, cap_raw = struct.unpack('>HhH', d[0:6])
@@ -126,10 +133,10 @@ def poll_bms(bms_bus):
                 db_write("bms_ntc2", round(decode_bms_temp(n2), 1))
                 db_write("bms_ntc3", round(decode_bms_temp(n3), 1))
             elif can_id == 0x106:
-                if len(d) >= 2:
-                    db_write("bms_ntc4", round(decode_bms_temp(struct.unpack('>H', d[0:2])[0]), 1))
-                if len(d) >= 4:
-                    db_write("bms_ntc5", round(decode_bms_temp(struct.unpack('>H', d[2:4])[0]), 1))
+                # BYTE0~1: NTC4, BYTE2~3: NTC5, BYTE4~5: NTC6 — all unsigned, 0.1K
+                db_write("bms_ntc4", round(decode_bms_temp(struct.unpack('>H', d[0:2])[0]), 1))
+                db_write("bms_ntc5", round(decode_bms_temp(struct.unpack('>H', d[2:4])[0]), 1))
+                db_write("bms_ntc6", round(decode_bms_temp(struct.unpack('>H', d[4:6])[0]), 1))
         except:
             continue
     db_flush()
