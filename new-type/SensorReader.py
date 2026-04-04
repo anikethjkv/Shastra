@@ -1,5 +1,4 @@
 import time
-import time
 from gpiozero import Button
 from mpu6050 import mpu6050
 from gps import gps, WATCH_ENABLE, WATCH_NEWSTYLE
@@ -16,7 +15,9 @@ db_conn.execute("CREATE TABLE IF NOT EXISTS latest_readings (sensor_name TEXT UN
 db_conn.commit()
 
 # --- Sensors ---
-smoke_sensor = Button(23, pull_up=True)
+# bounce_time=0.1 → gpiozero ignores transitions faster than 100ms, eliminating GPIO noise.
+# pull_up=True  → pin is HIGH at rest; sensor pulls LOW when smoke is detected (active-LOW).
+smoke_sensor = Button(23, pull_up=True, bounce_time=0.1)
 try:
     mpu = mpu6050(0x68)
 except:
@@ -41,8 +42,10 @@ print("General Sensor Collector (Smoke/GPS/MPU) is running...")
 
 try:
     while True:
-        # 1. Smoke Sensor
-        send("smoke_detected", 1.0 if not smoke_sensor.is_pressed else 0.0)
+        # pull_up=True: pin is HIGH at idle, LOW when smoke sensor actuates.
+        # is_pressed=True  → pin LOW → smoke detected → send 1.0
+        # is_pressed=False → pin HIGH (idle)           → send 0.0
+        send("smoke_detected", 1.0 if smoke_sensor.is_pressed else 0.0)
 
         # 2. MPU6050
         if mpu:
