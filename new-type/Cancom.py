@@ -181,7 +181,10 @@ def parse_can(msg):
         db_write("motor_pwr",     pwr)
         db_write("vehicle_speed", round(speed, 2))
         db_write("motor_rpm",     rpm)
-        db_write("motor_temp",    mtemp)
+        # Motor temp guard: ignore glitch values above 49°C or below -20°C.
+        # TPDO2 occasionally produces out-of-range readings; DB retains last valid value.
+        if -20 <= mtemp <= 49:
+            db_write("motor_temp", mtemp)
 
         # Odometer
         now = time.time()

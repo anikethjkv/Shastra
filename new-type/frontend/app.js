@@ -84,6 +84,7 @@
     const tiltCanvas  = $('tilt-canvas');
 
     let prev = {};
+    let lastDist = 0; // Persists odometer value across SSE reconnects
     const latestAlerts = {
         faults: { total: 0, f1: 0, f2: 0, f3: 0 },
         warnings: { total: 0, w1: 0, w2: 0 },
@@ -422,10 +423,12 @@
             prev.spd = spdRound;
         }
 
-        /* Battery / SOC */
-        const hvs = (d.bms_total_voltage || d.batt_v || 0).toFixed(0);
-        const soc = Math.round(d.bms_soc || d.batt_soc || 0);
-        setText(el.hvsVoltage, hvs + 'V');
+        /* Battery / SOC — voltage-based: 60V = 0%, 84V = 100% */
+        const battV = parseFloat(d.bms_total_voltage || d.batt_v || 0);
+        const soc   = battV >= 60
+            ? Math.round(Math.min(100, Math.max(0, (battV - 60) / 24 * 100)))
+            : 0;
+        setText(el.hvsVoltage, battV.toFixed(0) + 'V');
         setText(el.socPct, soc + '%');
         const ss = socStatus(soc);
         if (el.socLabel) { el.socLabel.textContent = ss.label; el.socLabel.style.color = ss.color; }
@@ -475,9 +478,9 @@
         /* Power & distance */
         const pwr = Math.round(d.motor_pwr || 0);
         setHTML(el.motorPower, pwr + '<small>W</small>');
-        const dist = (d.total_distance || 0).toFixed(1);
-        setHTML(el.totalDist, dist + '<small>km</small>');
-        setHTML(el.odometerValue, dist + '<small>km</small>');
+        // Odometer: persist last known value across SSE reconnects / CAN-offline gaps
+        if (d.total_distance != null) lastDist = d.total_distance;
+        setHTML(el.odometerValue, lastDist.toFixed(1) + '<small>km</small>');
 
         /* Faults (combined from all sources) */
         const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);
@@ -545,6 +548,9 @@
         setIndicator(el.indHead,   d.sw_head >= 1);
         setIndicator(el.indHiBeam, d.sw_hi_beam >= 1);
 
+        /* CAN active — true when TPDO data keys are present in payload */
+        const canActive = (d.ctrl_status != null) || (d.motor_rpm != null);
+
         /* Connectivity */
         const gpsLock = (d.gps_lock || 0) >= 2;
         const lteOn   = (d.lte_status || 0) >= 1;
@@ -552,14 +558,14 @@
         setClassName(el.gpsStatus, connClass(gpsLock));
         setText(el.lteStatus, lteOn ? 'ON' : 'OFF');
         setClassName(el.lteStatus, connClass(lteOn));
-        setText(el.canStatus, 'OK');
-        setClassName(el.canStatus, connClass(true));
+        setText(el.canStatus, canActive ? 'OK' : 'OFFLINE');
+        setClassName(el.canStatus, connClass(canActive));
 
         setTopState(el.topGpsPill, gpsLock ? 'ok' : 'offline');
         setTopState(el.topLtePill, lteOn ? 'ok' : 'offline');
 
-        /* HV Status */
-        const hvOn = (d.hv_active || 0) >= 1;
+        /* HV Status — on when battery voltage ≥ 60V (HV bus is live) */
+        const hvOn = battV >= 60;
         if (el.hvStatusBadge) {
             if (hvOn) el.hvStatusBadge.classList.add('active');
             else el.hvStatusBadge.classList.remove('active');
@@ -641,10 +647,9 @@
         };
         
         source.onerror = () => {
-
             source.close();
+            updateUI({}); // Clear all live CAN values to 0 / mark CAN as offline
             setTimeout(connectStream, 2000);
-            if (Object.keys(prev).length === 0) showDemoData();
         };
     }
 
