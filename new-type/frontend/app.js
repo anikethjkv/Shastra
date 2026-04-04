@@ -84,7 +84,6 @@
     const tiltCanvas  = $('tilt-canvas');
 
     let prev = {};
-    let lastDist = 0; // Persists odometer value across SSE reconnects
     const latestAlerts = {
         faults: { total: 0, f1: 0, f2: 0, f3: 0 },
         warnings: { total: 0, w1: 0, w2: 0 },
@@ -440,9 +439,7 @@
                 : 'linear-gradient(90deg, #d32f2f, #ef5350)';
         }
 
-        /* BMS extras */
-        const cur = (d.bms_current || d.batt_i || 0).toFixed(1);
-        setText(el.bmsCurrent, cur + 'A');
+
 
         /* BMS capacity & strings */
         const remCap = d.bms_rem_cap;
@@ -461,7 +458,6 @@
             const v = d[ntcKeys[i]];
             if (v != null) setText(ntcEls[i], v.toFixed(1) + '°');
         }
-        setText(el.bmsCycles, Math.round(d.bms_cycles || 0));
 
         /* Tilt */
         const ax = d.accel_x || 0, ay = d.accel_y || 0;
@@ -475,12 +471,9 @@
             prev.ay = ay;
         }
 
-        /* Power & distance */
+        /* Power */
         const pwr = Math.round(d.motor_pwr || 0);
         setHTML(el.motorPower, pwr + '<small>W</small>');
-        // Odometer: persist last known value across SSE reconnects / CAN-offline gaps
-        if (d.total_distance != null) lastDist = d.total_distance;
-        setHTML(el.odometerValue, lastDist.toFixed(1) + '<small>km</small>');
 
         /* Faults (combined from all sources) */
         const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);
@@ -633,23 +626,42 @@
     }
 
     /* ── SSE Stream ───────────────────────────────────────────── */
-    function connectStream() {
-        const source = new EventSource(STREAM_URL);
-        
-        source.onmessage = (e) => {
+    // Guards prevent stacking: only one EventSource and one reconnect timer exist at a time.
+    // Without this, onerror fires the browser auto-retry AND our setTimeout simultaneously,
+    // creating multiple live sources that all call updateUI — causing UI thrash / freeze.
+    let _sseSource        = null;
+    let _sseReconnectTimer = null;
+    let _sseOffline       = false; // throttle: only call updateUI({}) once per disconnect
 
-            try {
-                const data = JSON.parse(e.data);
-                updateUI(data);
-            } catch {
-                // Ignore malformed frames
-            }
+    function connectStream() {
+        // Cancel any pending reconnect
+        if (_sseReconnectTimer) { clearTimeout(_sseReconnectTimer); _sseReconnectTimer = null; }
+        // Tear down existing connection cleanly
+        if (_sseSource)         { _sseSource.close(); _sseSource = null; }
+
+        const source = new EventSource(STREAM_URL);
+        _sseSource = source;
+
+        source.onmessage = (e) => {
+            _sseOffline = false; // back online
+            try { updateUI(JSON.parse(e.data)); } catch { /* ignore malformed frame */ }
         };
-        
+
         source.onerror = () => {
             source.close();
-            updateUI({}); // Clear all live CAN values to 0 / mark CAN as offline
-            setTimeout(connectStream, 2000);
+            _sseSource = null;
+            // Only clear UI on the first disconnect event, not on every retry tick
+            if (!_sseOffline) {
+                _sseOffline = true;
+                updateUI({}); // zero all live CAN values, CAN → OFFLINE, HV → OFF
+            }
+            // Schedule exactly one reconnect — no stacking
+            if (!_sseReconnectTimer) {
+                _sseReconnectTimer = setTimeout(() => {
+                    _sseReconnectTimer = null;
+                    connectStream();
+                }, 2000);
+            }
         };
     }
 
