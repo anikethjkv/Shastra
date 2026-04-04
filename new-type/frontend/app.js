@@ -355,25 +355,10 @@
         if (!el.mapPlaceholder || !el.mapCanvas || !el.mapStatus) return;
         el.mapPlaceholder.addEventListener('click', openNavigationWindow);
 
-        if (!navigator.geolocation) {
-            setText(el.mapStatus, 'GEO UNSUPPORTED');
-            return;
-        }
-
-        setText(el.mapStatus, 'LOCATING...');
-        mapState.watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-                updateMapPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
-            },
-            () => {
-                setText(el.mapStatus, 'GPS BLOCKED');
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 10000,
-            },
-        );
+        // Location comes from hardware GPS via the backend API — no browser geolocation.
+        // navigator.geolocation.watchPosition is intentionally NOT called here:
+        // it triggers Chrome's permission popup every page load with no benefit.
+        setText(el.mapStatus, 'HARDWARE GPS');
 
         const mapsKeyFromWindow = typeof window.GOOGLE_MAPS_API_KEY === 'string' ? window.GOOGLE_MAPS_API_KEY.trim() : '';
         const mapsKeyFromStorage = (typeof window.localStorage !== 'undefined' && typeof window.localStorage.getItem === 'function')
@@ -474,6 +459,7 @@
         /* Power */
         const pwr = Math.round(d.motor_pwr || 0);
         setHTML(el.motorPower, pwr + '<small>W</small>');
+        setHTML(el.odometerValue, (d.total_distance || 0).toFixed(1) + '<small>km</small>');
 
         /* Faults (combined from all sources) */
         const totalFaults = (d.faults || 0) | (d.faults2 || 0) | (d.faults3 || 0);
@@ -643,7 +629,13 @@
         _sseSource = source;
 
         source.onmessage = (e) => {
-            _sseOffline = false; // back online
+            _sseOffline = false;
+            // Dismiss startup overlay on first live data frame
+            const ov = document.getElementById('startup-overlay');
+            if (ov) {
+                ov.classList.add('fade-out');
+                setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 450);
+            }
             try { updateUI(JSON.parse(e.data)); } catch { /* ignore malformed frame */ }
         };
 
