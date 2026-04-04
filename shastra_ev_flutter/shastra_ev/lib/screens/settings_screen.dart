@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _Section(title: 'Data Source', children: [
             _SwitchTile(
               label: 'Demo Mode',
-              subtitle: 'Use simulated data (disable to use Firebase)',
+              subtitle: 'Use simulated data (disable for live telemetry)',
               value: _demoMode,
               onChanged: (v) => setState(() => _demoMode = v),
               color: AppColors.cyan,
@@ -52,7 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _InfoTile(
                 icon: Icons.info_outline,
                 message:
-                    'Make sure your Firebase Realtime DB is configured in firebase_options.dart and the vehicle MCU is publishing to vehicles/\$vehicleId/live',
+                    'Make sure live telemetry publishing is configured for vehicle \$vehicleId before disabling demo mode.',
                 color: AppColors.amber,
               ),
             ],
@@ -107,12 +107,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _Section(title: 'About', children: [
             _InfoRow('App Version', '1.0.0'),
             _InfoRow('Build', 'Flutter 3.x'),
-            _InfoRow('Backend', 'Firebase Realtime DB'),
-            _InfoRow('Protocol', 'MQTT → Firebase → Flutter'),
+            _InfoRow('Backend', 'Telemetry Stream API'),
+            _InfoRow('Protocol', 'MQTT → API → Flutter'),
             _InfoRow('Team', 'SHASTRA EV'),
           ]),
           const SizedBox(height: 12),
-          // Firebase Schema reference card
+          // Telemetry schema reference card
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -123,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('FIREBASE DB SCHEMA',
+                const Text('TELEMETRY SCHEMA',
                   style: TextStyle(fontSize: 9, letterSpacing: 2,
                     color: AppColors.textMuted, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),

@@ -3,7 +3,7 @@ import 'dart:math';
 import '../models/vehicle_data.dart';
 
 /// Simulates realistic EV telemetry for demo purposes.
-/// Replace [vehicleStream] usage with [FirebaseVehicleService] for production.
+/// Replace [vehicleStream] usage with a live telemetry service for production.
 class DemoVehicleService {
   static final DemoVehicleService _instance = DemoVehicleService._();
   factory DemoVehicleService() => _instance;

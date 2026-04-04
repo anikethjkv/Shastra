@@ -87,8 +87,8 @@ class VehicleData {
     required this.timestamp,
   });
 
-  // Parse from Firebase Realtime DB snapshot
-  factory VehicleData.fromFirebase(Map<dynamic, dynamic> map) {
+  // Parse from generic telemetry map payload
+  factory VehicleData.fromMap(Map<dynamic, dynamic> map) {
     return VehicleData(
       speedKmh: (map['speed'] ?? 0).toDouble(),
       rpm: (map['rpm'] ?? 0).toInt(),
@@ -207,7 +207,7 @@ class TripRecord {
 
   Duration get duration => endTime.difference(startTime);
 
-  factory TripRecord.fromFirebase(String id, Map map) => TripRecord(
+  factory TripRecord.fromMap(String id, Map map) => TripRecord(
         id: id,
         startTime: DateTime.fromMillisecondsSinceEpoch(map['start']),
         endTime: DateTime.fromMillisecondsSinceEpoch(map['end']),

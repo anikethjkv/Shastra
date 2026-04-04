@@ -10,10 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ── Firebase ──────────────────────────────────────────────────────────────
-  firebase_core: ^2.27.0
-  firebase_database: ^10.5.0          # Realtime DB — live sensor stream
-
   # ── State Management ──────────────────────────────────────────────────────
   provider: ^6.1.2
 

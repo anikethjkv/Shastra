@@ -8,7 +8,7 @@ import sqlite3
 # --- CONFIGURATION ---
 CAN_INTERFACE = 'can0'
 CAN_BITRATE = 500000
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Sensor_data.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Can_data.db")
 
 # BMS CAN IDs for battery data polling
 BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]

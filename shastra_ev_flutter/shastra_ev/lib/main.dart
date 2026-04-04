@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'providers/vehicle_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/map_screen.dart';
@@ -13,33 +12,14 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── STEP 1: Initialize Firebase ──────────────────────────────────────────
-  try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'AIzaSyBbJTBLl6SbGRoSLHhCgsYufVk4rvGfQfw',
-        appId: '1:1067464766547:android:61a641a8ca28a6b3c582a6',
-        messagingSenderId: '1067464766547',
-        projectId: 'shastra-app-90301',
-        databaseURL:
-            'https://shastra-app-90301-default-rtdb.asia-southeast1.firebasedatabase.app',
-        storageBucket: 'shastra-app-90301.firebasestorage.app',
-      ),
-    );
-    debugPrint('✅ Firebase initialized successfully');
-  } catch (e) {
-    // If Firebase is already initialized (hot restart), ignore the error
-    debugPrint('⚠️ Firebase init warning: $e');
-  }
-
-  // ── STEP 2: Lock orientation ──────────────────────────────────────────────
+  // ── STEP 1: Lock orientation ──────────────────────────────────────────────
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
   }
 
-  // ── STEP 3: Run App ───────────────────────────────────────────────────────
+  // ── STEP 2: Run App ───────────────────────────────────────────────────────
   runApp(
     ChangeNotifierProvider(
       create: (_) => VehicleProvider()..init(),

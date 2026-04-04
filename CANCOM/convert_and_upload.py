@@ -1,17 +1,9 @@
+import json
 import os
 import sqlite3
-import firebase_admin
-from firebase_admin import credentials, db
 
 DB_PATH = os.environ.get("SQLITE_DB_PATH", "Sensor_data.db").strip() or "Sensor_data.db"
-SERVICE_ACCOUNT_PATH = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "").strip()
-DATABASE_URL = os.environ.get("FIREBASE_DATABASE_URL", "").strip()
-FIREBASE_NODE = os.environ.get("FIREBASE_NODE", "sensor_data").strip() or "sensor_data"
-
-if not SERVICE_ACCOUNT_PATH or not DATABASE_URL:
-    raise RuntimeError(
-        "Missing Firebase configuration. Set FIREBASE_SERVICE_ACCOUNT and FIREBASE_DATABASE_URL environment variables."
-    )
+OUTPUT_PATH = os.environ.get("EXPORT_JSON_PATH", "sensor_data_export.json").strip() or "sensor_data_export.json"
 
 conn = sqlite3.connect(DB_PATH)
 try:
@@ -29,15 +21,7 @@ try:
 finally:
     conn.close()
 
-print("DB converted")
+with open(OUTPUT_PATH, "w", encoding="utf-8") as file_obj:
+    json.dump(all_data, file_obj, indent=2)
 
-cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
-try:
-    app = firebase_admin.get_app()
-except ValueError:
-    app = firebase_admin.initialize_app(cred, {"databaseURL": DATABASE_URL})
-
-ref = db.reference(FIREBASE_NODE, app=app)
-ref.set(all_data)
-
-print("Uploaded to Firebase")
+print(f"Exported SQLite data from {DB_PATH} to {OUTPUT_PATH}")

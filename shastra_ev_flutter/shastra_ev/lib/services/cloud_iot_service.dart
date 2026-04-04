@@ -96,7 +96,7 @@ class CloudIoTService {
         if (data != null) {
           final decoded = utf8.decode(base64.decode(data));
           final payload = jsonDecode(decoded) as Map<String, dynamic>;
-          _controller.add(VehicleData.fromFirebase(payload));
+          _controller.add(VehicleData.fromMap(payload));
         }
       }
 

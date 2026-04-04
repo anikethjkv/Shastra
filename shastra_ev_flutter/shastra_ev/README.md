@@ -41,7 +41,7 @@ lib/
 ├── services/
 │   ├── cloud_iot_service.dart   # Google Cloud IoT Core + Pub/Sub
 │   ├── demo_service.dart        # Simulated live data (demo/competition)
-│   └── firebase_service.dart    # Firebase Realtime DB (alternate backend)
+│   └── ...                      # Additional live telemetry backends
 ├── providers/
 │   └── vehicle_provider.dart    # State management (Provider pattern)
 ├── screens/
@@ -221,10 +221,10 @@ APK output: `build/app/outputs/flutter-apk/app-release.apk`
 | Battery indicator | Custom `AnimatedFractionallySizedBox` |
 | Tilt sensor | `CustomPainter` gyroscope dot |
 | GPS map | `google_maps_flutter` with dark style + polyline trail |
-| Phase voltages | Realtime AC ripple simulation / Firebase |
+| Phase voltages | Realtime AC ripple simulation |
 | Drive modes | ECO / SPORT / RACE — changes all physics limits |
 | Smoke alert | Animated danger overlay on dashboard + map |
-| Trip history | Stored in Firestore / demo list |
+| Trip history | Stored in demo list |
 | Network status | Signal bars + latency + BT status |
 | State management | `provider` package |
 | Backend | Google Cloud IoT Core + Pub/Sub (production) |

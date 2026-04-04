@@ -24,39 +24,10 @@ echo "Cleaning up old processes..."
 pkill -f "python3 Cancom.py"
 pkill -f "python3 SensorReader.py"
 pkill -f "python3 api.py"
-pkill -f "convert_and_upload.py"
 kill $(lsof -ti:8080) 2>/dev/null
 sleep 1
 
 echo "Opening terminals and starting Shastra Telemetry services..."
-
-trigger_firebase_upload() {
-    local upload_script="../CANCOM/convert_and_upload.py"
-    local upload_log="firebase_upload.log"
-
-    if [ "${RUN_FIREBASE_UPLOAD_ON_START:-0}" != "1" ]; then
-        return
-    fi
-
-    if [ ! -f "$upload_script" ]; then
-        echo "[warn] Firebase upload script not found at $upload_script"
-        return
-    fi
-
-    if [ -z "${FIREBASE_SERVICE_ACCOUNT:-}" ] || [ -z "${FIREBASE_DATABASE_URL:-}" ]; then
-        echo "[warn] RUN_FIREBASE_UPLOAD_ON_START=1 but Firebase env is missing"
-        echo "       Required: FIREBASE_SERVICE_ACCOUNT and FIREBASE_DATABASE_URL"
-        return
-    fi
-
-    SQLITE_DB_PATH="${SQLITE_DB_PATH:-$(pwd)/Sensor_data.db}" \
-    FIREBASE_SERVICE_ACCOUNT="$FIREBASE_SERVICE_ACCOUNT" \
-    FIREBASE_DATABASE_URL="$FIREBASE_DATABASE_URL" \
-    FIREBASE_NODE="${FIREBASE_NODE:-sensor_data}" \
-    nohup python3 "$upload_script" > "$upload_log" 2>&1 &
-
-    echo "[ok] Triggered Firebase upload job -> $upload_log"
-}
 
 ensure_running() {
     local script="$1"
@@ -111,6 +82,5 @@ sleep 1
 ensure_running "Cancom.py" "cancom.log"
 ensure_running "SensorReader.py" "sensorreader.log"
 ensure_running "api.py" "api.log"
-trigger_firebase_upload
 
 echo "Done! The dashboard is running."
