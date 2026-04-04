@@ -95,6 +95,10 @@
                             <span class="strip-label">POWER</span>
                             <span class="strip-value" id="motor-power">0<small>W</small></span>
                         </div>
+                        <div class="strip-item">
+                            <span class="strip-label">DISTANCE</span>
+                            <span class="strip-value" id="total-distance">0.0<small>km</small></span>
+                        </div>
                     </div>
                 </div>
 
@@ -222,16 +226,5 @@
     <script src="gauges.js"></script>
     <script src="config.js"></script>
     <script src="app.js"></script>
-
-    <!-- Startup overlay: covers desktop until first SSE data arrives -->
-    <div id="startup-overlay">
-        <div class="startup-content">
-            <div class="startup-brand">SHASTRA</div>
-            <div class="startup-sub">EV TELEMETRY</div>
-            <div class="startup-spinner"></div>
-            <div class="startup-msg">Connecting to vehicle systems…</div>
-        </div>
-    </div>
-
 </body>
 </html>
