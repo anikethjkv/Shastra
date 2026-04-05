@@ -2,6 +2,24 @@
 set -euo pipefail
 
 DASHBOARD_URL="${DASHBOARD_URL:-http://127.0.0.1:8080}"
+WORKDIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+start_backend_if_missing() {
+    local script="$1"
+    local log_file="$2"
+
+    if ! pgrep -f "python3 $script" >/dev/null 2>&1; then
+        nohup python3 "$WORKDIR/$script" >> "$WORKDIR/logs/$log_file" 2>&1 &
+        sleep 0.2
+    fi
+}
+
+mkdir -p "$WORKDIR/logs"
+
+# Ensure all three backend services are running before kiosk opens.
+start_backend_if_missing "Cancom.py" "cancom.log"
+start_backend_if_missing "SensorReader.py" "sensorreader.log"
+start_backend_if_missing "api.py" "api.log"
 
 # Give API some time to come up after boot.
 sleep 8

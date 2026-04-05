@@ -8,6 +8,8 @@ Type=simple
 User=__RUN_USER__
 WorkingDirectory=__WORKDIR__
 ExecStart=/bin/bash __WORKDIR__/boot/launch_stack.sh
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
 Restart=always
 RestartSec=2
 Environment=PYTHONUNBUFFERED=1
