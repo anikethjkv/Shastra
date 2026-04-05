@@ -1,7 +1,6 @@
 import can
 import os
 import time
-import struct
 import subprocess
 import sqlite3
 
@@ -10,9 +9,6 @@ CAN_INTERFACE = 'can0'
 CAN_BITRATE = 500000
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Can_data.db")
 
-# BMS CAN IDs for battery data polling
-BMS_IDS = [0x100, 0x101, 0x104, 0x105, 0x106]
-BMS_POLL_INTERVAL = 2.0
 SWITCH_IDS = {0x40, 0x43}
 
 # Multipliers from documentation
@@ -29,10 +25,6 @@ MAX_PHASE_V = 45.0
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
     return int.from_bytes(data_chunk, byteorder='little', signed=signed)
-
-def decode_bms_temp(raw_value):
-    """Decode BMS NTC temperature: (raw - 2731) / 10.0 in °C."""
-    return (raw_value - 2731) / 10.0
 
 # --- Setup Direct SQLite ---
 db_conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -71,9 +63,9 @@ def setup_can():
     try:
         result = subprocess.run(['ip', 'link', 'show', CAN_INTERFACE], capture_output=True, text=True)
         if "UP" not in result.stdout:
-            subprocess.run(['sudo', 'ip', 'link', 'set', CAN_INTERFACE, 'down'], check=False)
-            subprocess.run(['sudo', 'ip', 'link', 'set', CAN_INTERFACE, 'type', 'can', 'bitrate', str(CAN_BITRATE)], check=True)
-            subprocess.run(['sudo', 'ip', 'link', 'set', CAN_INTERFACE, 'up'], check=True)
+            subprocess.run(['ip', 'link', 'set', CAN_INTERFACE, 'down'], check=False)
+            subprocess.run(['ip', 'link', 'set', CAN_INTERFACE, 'type', 'can', 'bitrate', str(CAN_BITRATE)], check=True)
+            subprocess.run(['ip', 'link', 'set', CAN_INTERFACE, 'up'], check=True)
         print(f"{CAN_INTERFACE} initialized at {CAN_BITRATE} bps.")
         return True
     except Exception as e:
@@ -89,57 +81,6 @@ def check_remote_start(bus):
             bus.send(can.Message(arbitration_id=0x41, data=[cmd], is_extended_id=False))
     except:
         pass
-
-# BMS validity limits — values outside these ranges are garbled frames, silently dropped.
-MAX_SOC      = 100    # SOC is a percentage: 0–100. Anything above = erroneous.
-MAX_NTC_TEMP = 100.0  # NTC sensors cannot physically read above 100°C on this pack.
-MIN_NTC_TEMP = -40.0  # Sub -40°C is equally unphysical for a Li-ion pack.
-
-def _write_ntc(key, raw):
-    """Decode BMS NTC raw and write only if within physical bounds."""
-    temp = round(decode_bms_temp(raw), 1)
-    if MIN_NTC_TEMP <= temp <= MAX_NTC_TEMP:
-        db_write(key, temp)
-
-def poll_bms(bus):
-    """Poll BMS CAN IDs and write responses to SQLite."""
-    for can_id in BMS_IDS:
-        try:
-            bus.send(can.Message(arbitration_id=can_id, data=[0x5A], is_extended_id=False))
-            resp = bus.recv(timeout=0.1)
-            if not resp or resp.arbitration_id != can_id or len(resp.data) < 4:
-                continue
-            d = resp.data
-
-            if can_id == 0x100:
-                v_raw, i_raw, cap_raw = struct.unpack('>HhH', d[0:6])
-                db_write("bms_total_voltage", round(v_raw * 0.01, 2))
-                db_write("bms_current",       round(i_raw * 0.01, 2))
-                db_write("bms_rem_cap",        cap_raw * 10)
-            elif can_id == 0x101:
-                fc_raw, cyc, rsoc = struct.unpack('>HhH', d[0:6])
-                db_write("bms_full_cap", fc_raw * 10)
-                db_write("bms_cycles",   cyc)
-                # SOC guard: discard if outside 0–100% (erroneous reads like 1386% ignored)
-                if 0 <= rsoc <= MAX_SOC:
-                    db_write("bms_soc", rsoc)
-            elif can_id == 0x104:
-                db_write("bms_strings",   d[0])
-                db_write("bms_ntc_count", d[1])
-            elif can_id == 0x105:
-                n1, n2, n3 = struct.unpack('>HHH', d[0:6])
-                # NTC guard: discard individual sensors if outside -40°C to 100°C
-                _write_ntc("bms_ntc1", n1)
-                _write_ntc("bms_ntc2", n2)
-                _write_ntc("bms_ntc3", n3)
-            elif can_id == 0x106:
-                if len(d) >= 2:
-                    _write_ntc("bms_ntc4", struct.unpack('>H', d[0:2])[0])
-                if len(d) >= 4:
-                    _write_ntc("bms_ntc5", struct.unpack('>H', d[2:4])[0])
-        except:
-            continue
-    db_flush()
 
 # --- Odometer ---
 total_distance_km = 0.0
@@ -197,7 +138,7 @@ def parse_can(msg):
         db_write("total_distance", total_distance_km)
 
     # --- TPDO 3 (0x3AA): ignored ---
-    # Battery data comes exclusively from BMS polling (0x100/0x101).
+    # Battery data is intentionally not handled in this collector.
     # elif cid == 0x3AA: pass
 
     # --- TPDO 4: Phase Voltages ---
@@ -230,8 +171,8 @@ def parse_can(msg):
         db_write("warnings2", decode_le(d[6:8], signed=False))
 
     else:
-        # Ignore BMS IDs which we poll actively and throttle unknown logs to avoid loop stalls.
-        if cid not in BMS_IDS and (time.time() - last_unknown_log) > 0.5:
+        # Throttle unknown logs to avoid loop stalls.
+        if (time.time() - last_unknown_log) > 0.5:
             last_unknown_log = time.time()
             print(f"[UNKNOWN] ID: {hex(cid)} | LEN: {len(d)} | DATA: {d.hex()}")
 
@@ -257,7 +198,6 @@ except:
 last_time = time.time()
 last_flush = time.time()
 last_remote = time.time()
-last_bms = time.time()
 msg_count = 0
 
 print("Shastra CAN Collector running (direct SQLite writes)...")
@@ -280,11 +220,6 @@ try:
         if now - last_remote > 0.5:
             check_remote_start(bus)
             last_remote = now
-
-        # BMS poll every 2s
-        if now - last_bms > BMS_POLL_INTERVAL:
-            poll_bms(bus)
-            last_bms = now
 
 except KeyboardInterrupt:
     print(f"\nStopping... ({msg_count} CAN messages processed)")
