@@ -92,7 +92,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 payload = json.dumps(data)
                 self.wfile.write(f"data: {payload}\n\n".encode())
                 self.wfile.flush()
-                time.sleep(0.05)  # 20 FPS updates
+                time.sleep(0.02)  # 50 FPS updates
             except Exception:
                 break
 

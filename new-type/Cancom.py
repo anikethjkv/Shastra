@@ -9,7 +9,7 @@ CAN_INTERFACE = 'can0'
 CAN_BITRATE = 500000
 UDP_TARGET_HOST = '127.0.0.1'
 UDP_TARGET_PORT = 8765
-PUBLISH_INTERVAL_S = 0.05
+PUBLISH_INTERVAL_S = 0.02
 
 SWITCH_IDS = {0x40, 0x43}
 
@@ -23,6 +23,8 @@ SCALES = {
 # Maximum physically valid phase voltage.
 # 45V is the hard ceiling — anything at or above is a garbled ADC frame, discard entirely.
 MAX_PHASE_V = 45.0
+MAX_SPEED_KMPH = 80.0
+MAX_RPM = 5100
 
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
@@ -97,9 +99,12 @@ def parse_can(msg):
     # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA and len(d) >= 8:
         pwr   = decode_le(d[0:2], signed=False)                   # Power: unsigned W
-        speed = decode_le(d[2:4], signed=False) / SCALES["speed"] # Speed: unsigned raw/256 = km/h
-        rpm   = decode_le(d[4:6], signed=True)                    # RPM: signed (negative = reverse)
+        speed_raw = decode_le(d[2:4], signed=False) / SCALES["speed"] # Speed: unsigned raw/256 = km/h
+        rpm_raw   = decode_le(d[4:6], signed=True)                    # RPM: signed (negative = reverse)
         mtemp = decode_le(d[6:8], signed=True)                    # Motor temp: signed °C
+
+        speed = min(speed_raw, MAX_SPEED_KMPH)
+        rpm = max(-MAX_RPM, min(rpm_raw, MAX_RPM))
 
         write_value("motor_pwr",     pwr)
         write_value("vehicle_speed", round(speed, 2))
@@ -177,7 +182,7 @@ print("Shastra CAN Collector running (direct UDP stream)...")
 
 try:
     while True:
-        msg = bus.recv(timeout=0.01)
+        msg = bus.recv(timeout=0.002)
         if msg:
             parse_can(msg)
             msg_count += 1
