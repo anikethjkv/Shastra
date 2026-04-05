@@ -26,6 +26,18 @@ if ! python3 -c "import can" >/dev/null 2>&1; then
 fi
 
 PIDS=()
+SCRIPTS=("Cancom.py" "api.py")
+LOGS=("cancom.log" "api.log")
+
+start_service() {
+    local idx="$1"
+    local script="${SCRIPTS[$idx]}"
+    local log_file="${LOGS[$idx]}"
+
+    python3 "$script" >> "logs/$log_file" 2>&1 &
+    PIDS[$idx]="$!"
+    echo "[info] started $script (pid=${PIDS[$idx]})"
+}
 
 cleanup() {
     for pid in "${PIDS[@]:-}"; do
@@ -37,19 +49,20 @@ cleanup() {
 
 trap cleanup INT TERM
 
-python3 Cancom.py &
-PIDS+=("$!")
+mkdir -p logs
 
-python3 SensorReader.py &
-PIDS+=("$!")
+for i in "${!SCRIPTS[@]}"; do
+    start_service "$i"
+done
 
-python3 api.py &
-PIDS+=("$!")
-
-# Exit (and let systemd restart) if any child exits unexpectedly.
-wait -n "${PIDS[@]}"
-status=$?
-echo "[fatal] A dashboard service exited unexpectedly (status=$status)."
-cleanup
-wait || true
-exit "$status"
+# Keep stack alive: restart any child that exits unexpectedly.
+while true; do
+    sleep 2
+    for i in "${!PIDS[@]}"; do
+        pid="${PIDS[$i]}"
+        if ! kill -0 "$pid" >/dev/null 2>&1; then
+            echo "[warn] ${SCRIPTS[$i]} exited; restarting..."
+            start_service "$i"
+        fi
+    done
+done

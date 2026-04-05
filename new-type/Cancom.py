@@ -1,13 +1,15 @@
 import can
-import os
 import time
+import json
+import socket
 import subprocess
-import sqlite3
 
 # --- CONFIGURATION ---
 CAN_INTERFACE = 'can0'
 CAN_BITRATE = 500000
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Can_data.db")
+UDP_TARGET_HOST = '127.0.0.1'
+UDP_TARGET_PORT = 8765
+PUBLISH_INTERVAL_S = 0.05
 
 SWITCH_IDS = {0x40, 0x43}
 
@@ -26,36 +28,22 @@ def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
     return int.from_bytes(data_chunk, byteorder='little', signed=signed)
 
-# --- Setup Direct SQLite ---
-db_conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-db_conn.execute("PRAGMA journal_mode=WAL")
-db_conn.execute("PRAGMA synchronous=NORMAL")
-db_conn.execute("CREATE TABLE IF NOT EXISTS latest_readings (sensor_name TEXT UNIQUE, reading_value REAL)")
-db_conn.commit()
+latest_data = {}
+dirty_data = False
 
-sensor_cache = {}
-
-def db_write(name, value):
-    """Buffer sensor value in memory."""
-    sensor_cache[name] = float(value)
-
-def db_flush():
-    """Batch write only the newest values to SQLite, drastically reducing disk IO."""
-    if not sensor_cache:
-        return
+def write_value(name, value):
+    """Update in-memory telemetry value with numeric coercion guard."""
+    global dirty_data
     try:
-        # Prepare batch payload
-        records = [(k, v) for k, v in sensor_cache.items()]
-        sensor_cache.clear()
-        
-        db_conn.executemany(
-            "INSERT INTO latest_readings (sensor_name, reading_value) VALUES (?, ?) "
-            "ON CONFLICT(sensor_name) DO UPDATE SET reading_value=excluded.reading_value",
-            records
-        )
-        db_conn.commit()
-    except Exception as e:
-        print(f"[DB COMMIT ERROR]: {e}")
+        latest_data[name] = float(value)
+        dirty_data = True
+    except Exception:
+        pass
+
+def publish_latest(sock, target):
+    """Publish latest telemetry snapshot to API bridge over localhost UDP."""
+    payload = json.dumps(latest_data, separators=(',', ':'))
+    sock.sendto(payload.encode('utf-8'), target)
 
 
 # --- CAN Setup ---
@@ -71,16 +59,6 @@ def setup_can():
     except Exception as e:
         print(f"CAN Setup Error: {e}")
         return False
-
-def check_remote_start(bus):
-    """Read remote_start_cmd from SQLite and send to CAN."""
-    try:
-        row = db_conn.execute("SELECT reading_value FROM latest_readings WHERE sensor_name='remote_start_cmd'").fetchone()
-        cmd = int(float(row[0])) if row else 0
-        if cmd:
-            bus.send(can.Message(arbitration_id=0x41, data=[cmd], is_extended_id=False))
-    except:
-        pass
 
 # --- Odometer ---
 total_distance_km = 0.0
@@ -100,21 +78,21 @@ def parse_can(msg):
         s = d[0]
         hi_beam_raw = 1.0 if (s & (1 << 4)) else 0.0   # bit 5 in 1-based indexing
         headlight_raw = 1.0 if (s & (1 << 5)) else 0.0 # bit 6 in 1-based indexing
-        db_write("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
-        db_write("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
+        write_value("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
+        write_value("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
         # Horn bit is intentionally ignored for dashboard UI; keep value pinned low.
-        db_write("sw_horn",    0.0)
-        db_write("sw_brake",   1.0 if (s & (1 << 3)) else 0.0)
-        db_write("sw_hi_beam", hi_beam_raw)
-        db_write("sw_head", headlight_raw)
-        db_write("sw_low_beam", 1.0 if (headlight_raw >= 1.0 and hi_beam_raw < 1.0) else 0.0)
+        write_value("sw_horn",    0.0)
+        write_value("sw_brake",   1.0 if (s & (1 << 3)) else 0.0)
+        write_value("sw_hi_beam", hi_beam_raw)
+        write_value("sw_head", headlight_raw)
+        write_value("sw_low_beam", 1.0 if (headlight_raw >= 1.0 and hi_beam_raw < 1.0) else 0.0)
 
     # --- TPDO 1: Controller Data ---
     elif cid == 0x1AA and len(d) >= 8:
-        db_write("ctrl_status", d[0])
-        db_write("ctrl_temp", decode_le(d[2:4]))
-        db_write("ctrl_flags", decode_le(d[4:6], signed=False))
-        db_write("ctrl_flags2", decode_le(d[6:8], signed=False))
+        write_value("ctrl_status", d[0])
+        write_value("ctrl_temp", decode_le(d[2:4]))
+        write_value("ctrl_flags", decode_le(d[4:6], signed=False))
+        write_value("ctrl_flags2", decode_le(d[6:8], signed=False))
 
     # --- TPDO 2: Motor Data ---
     elif cid == 0x2AA and len(d) >= 8:
@@ -123,19 +101,19 @@ def parse_can(msg):
         rpm   = decode_le(d[4:6], signed=True)                    # RPM: signed (negative = reverse)
         mtemp = decode_le(d[6:8], signed=True)                    # Motor temp: signed °C
 
-        db_write("motor_pwr",     pwr)
-        db_write("vehicle_speed", round(speed, 2))
-        db_write("motor_rpm",     rpm)
+        write_value("motor_pwr",     pwr)
+        write_value("vehicle_speed", round(speed, 2))
+        write_value("motor_rpm",     rpm)
         # Motor temp guard: ignore glitch values above 49°C or below -20°C.
         # TPDO2 occasionally produces out-of-range readings; DB retains last valid value.
         if -20 <= mtemp <= 49:
-            db_write("motor_temp", mtemp)
+            write_value("motor_temp", mtemp)
 
         # Odometer
         now = time.time()
         total_distance_km += speed * ((now - last_time) / 3600.0)
         last_time = now
-        db_write("total_distance", total_distance_km)
+        write_value("total_distance", total_distance_km)
 
     # --- TPDO 3 (0x3AA): ignored ---
     # Battery data is intentionally not handled in this collector.
@@ -150,25 +128,25 @@ def parse_can(msg):
         vb = decode_le(d[2:4], signed=False) / SCALES["voltage"]
         vc = decode_le(d[4:6], signed=False) / SCALES["voltage"]
         if va < MAX_PHASE_V and vb < MAX_PHASE_V and vc < MAX_PHASE_V:
-            db_write("phase_v_a", va)
-            db_write("phase_v_b", vb)
-            db_write("phase_v_c", vc)
+            write_value("phase_v_a", va)
+            write_value("phase_v_b", vb)
+            write_value("phase_v_c", vc)
 
     # --- TPDO 5: Phase Currents & Faults ---
     # Map1=PhaseAI, Map2=PhaseBi, Map3=PhaseCI — signed ÷32 (negative = regen).
     # Map4=faults — unsigned bitmask.
     elif cid == 0x5AA and len(d) >= 8:
-        db_write("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])
-        db_write("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
-        db_write("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
-        db_write("faults",    decode_le(d[6:8], signed=False))
+        write_value("phase_i_a", decode_le(d[0:2], signed=True) / SCALES["current"])
+        write_value("phase_i_b", decode_le(d[2:4], signed=True) / SCALES["current"])
+        write_value("phase_i_c", decode_le(d[4:6], signed=True) / SCALES["current"])
+        write_value("faults",    decode_le(d[6:8], signed=False))
 
     # --- TPDO 6: Faults (cont.) & Warnings ---
     elif cid == 0x6AA and len(d) >= 8:
-        db_write("faults2",   decode_le(d[0:2], signed=False))
-        db_write("faults3",   decode_le(d[2:4], signed=False))
-        db_write("warnings",  decode_le(d[4:6], signed=False))
-        db_write("warnings2", decode_le(d[6:8], signed=False))
+        write_value("faults2",   decode_le(d[0:2], signed=False))
+        write_value("faults3",   decode_le(d[2:4], signed=False))
+        write_value("warnings",  decode_le(d[4:6], signed=False))
+        write_value("warnings2", decode_le(d[6:8], signed=False))
 
     else:
         # Throttle unknown logs to avoid loop stalls.
@@ -188,19 +166,14 @@ except Exception as e:
     print(f"CAN Bus Error: {e}")
     exit(1)
 
-# Odometer sync from SQLite
-try:
-    row = db_conn.execute("SELECT reading_value FROM latest_readings WHERE sensor_name='total_distance'").fetchone()
-    total_distance_km = float(row[0]) if row else 0.0
-except:
-    total_distance_km = 0.0
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_target = (UDP_TARGET_HOST, UDP_TARGET_PORT)
 
 last_time = time.time()
-last_flush = time.time()
-last_remote = time.time()
+last_publish = time.time()
 msg_count = 0
 
-print("Shastra CAN Collector running (direct SQLite writes)...")
+print("Shastra CAN Collector running (direct UDP stream)...")
 
 try:
     while True:
@@ -210,23 +183,24 @@ try:
             msg_count += 1
 
         now = time.time()
-
-        # Flush SQLite every 50ms
-        if now - last_flush > 0.05:
-            db_flush()
-            last_flush = now
-
-        # Remote start check every 500ms
-        if now - last_remote > 0.5:
-            check_remote_start(bus)
-            last_remote = now
+        if dirty_data and (now - last_publish) >= PUBLISH_INTERVAL_S:
+            try:
+                publish_latest(udp_sock, udp_target)
+                globals()['dirty_data'] = False
+            except Exception as e:
+                print(f"[STREAM ERROR]: {e}")
+            last_publish = now
 
 except KeyboardInterrupt:
     print(f"\nStopping... ({msg_count} CAN messages processed)")
 except (can.CanOperationError, OSError) as e:
     print(f"\nCAN Error: {e}")
 finally:
-    db_flush()
-    db_conn.close()
+    try:
+        if latest_data:
+            publish_latest(udp_sock, udp_target)
+    except Exception:
+        pass
+    udp_sock.close()
     if bus:
         bus.shutdown()

@@ -18,7 +18,6 @@ mkdir -p "$WORKDIR/logs"
 
 # Ensure all three backend services are running before kiosk opens.
 start_backend_if_missing "Cancom.py" "cancom.log"
-start_backend_if_missing "SensorReader.py" "sensorreader.log"
 start_backend_if_missing "api.py" "api.log"
 
 # Give API some time to come up after boot.

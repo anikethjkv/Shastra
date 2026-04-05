@@ -1,22 +1,50 @@
 #!/usr/bin/env python3
 """
 Shastra EV Dashboard — HTTP API Bridge
-Reads latest_readings from SQLite and serves JSON + static frontend files.
+Receives live CAN telemetry from localhost UDP and serves JSON + static frontend files.
 """
 
 import json
-import sqlite3
 import os
 import datetime
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import time
+import socket
+import threading
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SENSOR_DB_PATH = os.path.join(BASE_DIR, "Sensor_data.db")
-CAN_DB_PATH = os.path.join(BASE_DIR, "Can_data.db")
-SQLITE_DB_PATHS = [SENSOR_DB_PATH, CAN_DB_PATH]
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 PORT = 8080
+UDP_LISTEN_HOST = "127.0.0.1"
+UDP_LISTEN_PORT = 8765
+
+latest_state = {}
+latest_state_lock = threading.Lock()
+
+
+def read_state_snapshot():
+    with latest_state_lock:
+        return dict(latest_state)
+
+
+def udp_listener_loop():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((UDP_LISTEN_HOST, UDP_LISTEN_PORT))
+    while True:
+        try:
+            payload, _ = sock.recvfrom(65535)
+            decoded = json.loads(payload.decode("utf-8"))
+            if not isinstance(decoded, dict):
+                continue
+            sanitized = {}
+            for k, v in decoded.items():
+                if isinstance(k, str) and isinstance(v, (int, float)):
+                    sanitized[k] = float(v)
+            if sanitized:
+                with latest_state_lock:
+                    latest_state.update(sanitized)
+        except Exception:
+            continue
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -39,25 +67,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
-    def _read_latest_readings(self, db_path):
-        try:
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT sensor_name, reading_value FROM latest_readings")
-            rows = cursor.fetchall()
-            conn.close()
-            return {row[0]: row[1] for row in rows}
-        except:
-            return {}
-
-    def _get_db_data(self):
-        data = {}
-        for db_path in SQLITE_DB_PATHS:
-            data.update(self._read_latest_readings(db_path))
-        return data
-
     def _serve_sensor_data(self):
-        data = self._get_db_data()
+        data = read_state_snapshot()
         payload = json.dumps(data)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -77,7 +88,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         while True:
             try:
-                data = self._get_db_data()
+                data = read_state_snapshot()
                 payload = json.dumps(data)
                 self.wfile.write(f"data: {payload}\n\n".encode())
                 self.wfile.flush()
@@ -86,7 +97,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 break
 
     def _serve_debug(self):
-        data = self._get_db_data()
+        data = read_state_snapshot()
         info = {
             "server_time": datetime.datetime.now().isoformat(),
             "count": len(data),
@@ -109,6 +120,8 @@ class ReusableThreadingHTTPServer(ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
+    listener = threading.Thread(target=udp_listener_loop, daemon=True)
+    listener.start()
     server = ReusableThreadingHTTPServer((
         "0.0.0.0", PORT), DashboardHandler)
     print(f"Shastra Dashboard running → http://localhost:{PORT}")
