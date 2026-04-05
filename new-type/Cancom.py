@@ -144,21 +144,25 @@ def poll_bms(bus):
 # --- Odometer ---
 total_distance_km = 0.0
 last_time = time.time()
+last_unknown_log = 0.0
 
 # --- CAN Message Parser (using user's proven decode_le logic) ---
 def parse_can(msg):
-    global total_distance_km, last_time
+    global total_distance_km, last_time, last_unknown_log
     cid = msg.arbitration_id
     d = msg.data
 
-    # --- ARDUINO SWITCHES (ID 0x40) ---
-    if cid in SWITCH_IDS and len(d) >= 1:
+    # --- ARDUINO SWITCHES (ID 0x40/0x43) ---
+    if cid in SWITCH_IDS:
+        if len(d) < 1:
+            return
         s = d[0]
         hi_beam_raw = 1.0 if (s & (1 << 4)) else 0.0   # bit 5 in 1-based indexing
         headlight_raw = 1.0 if (s & (1 << 5)) else 0.0 # bit 6 in 1-based indexing
         db_write("sw_left",    1.0 if (s & (1 << 0)) else 0.0)
         db_write("sw_right",   1.0 if (s & (1 << 1)) else 0.0)
-        db_write("sw_horn",    1.0 if (s & (1 << 2)) else 0.0)
+        # Horn bit is intentionally ignored for dashboard UI; keep value pinned low.
+        db_write("sw_horn",    0.0)
         db_write("sw_brake",   1.0 if (s & (1 << 3)) else 0.0)
         db_write("sw_hi_beam", hi_beam_raw)
         db_write("sw_head", headlight_raw)
@@ -226,8 +230,9 @@ def parse_can(msg):
         db_write("warnings2", decode_le(d[6:8], signed=False))
 
     else:
-        # Ignore BMS IDs which we poll actively
-        if cid not in BMS_IDS:
+        # Ignore BMS IDs which we poll actively and throttle unknown logs to avoid loop stalls.
+        if cid not in BMS_IDS and (time.time() - last_unknown_log) > 0.5:
+            last_unknown_log = time.time()
             print(f"[UNKNOWN] ID: {hex(cid)} | LEN: {len(d)} | DATA: {d.hex()}")
 
 # --- Main ---

@@ -536,7 +536,7 @@
         /* Switch indicators */
         setIndicator(el.indLeft,   d.sw_left >= 1);
         setIndicator(el.indRight,  d.sw_right >= 1);
-        setIndicator(el.indHorn,   d.sw_horn >= 1);
+        setIndicator(el.indHorn,   false);
         setIndicator(el.indBrake,  d.sw_brake >= 1);
         setIndicator(el.indHead,   d.sw_head >= 1);
         setIndicator(el.indHiBeam, d.sw_hi_beam >= 1);
