@@ -13,8 +13,8 @@ CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
 Restart=always
 RestartSec=2
 Environment=PYTHONUNBUFFERED=1
-StandardOutput=append:__WORKDIR__/logs/shastra-dashboard.log
-StandardError=append:__WORKDIR__/logs/shastra-dashboard.err.log
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

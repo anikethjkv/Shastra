@@ -21,6 +21,8 @@ if [ ! -f "$DASHBOARD_TEMPLATE" ] || [ ! -f "$KIOSK_TEMPLATE" ]; then
 fi
 
 mkdir -p "$WORKDIR/logs"
+chown -R "$RUN_USER:$RUN_USER" "$WORKDIR/logs"
+chmod 755 "$WORKDIR/logs"
 chmod +x "$WORKDIR/boot/launch_stack.sh" "$WORKDIR/boot/open_kiosk.sh"
 
 render_service() {
