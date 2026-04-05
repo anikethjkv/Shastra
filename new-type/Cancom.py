@@ -3,6 +3,8 @@ import time
 import json
 import socket
 import subprocess
+from collections import deque
+from statistics import median
 
 # --- CONFIGURATION ---
 CAN_INTERFACE = 'can0'
@@ -25,6 +27,10 @@ SCALES = {
 MAX_PHASE_V = 45.0
 MAX_SPEED_KMPH = 80.0
 MAX_RPM = 5100
+MAX_SPEED_SLEW_KMPH_PER_S = 25.0
+MAX_RPM_SLEW_PER_S = 2200.0
+SPIKE_RATIO_LOW = 1.8
+SPIKE_RATIO_HIGH = 2.2
 
 def decode_le(data_chunk, signed=True):
     """Decodes little endian data from CAN packet."""
@@ -32,6 +38,11 @@ def decode_le(data_chunk, signed=True):
 
 latest_data = {}
 dirty_data = False
+speed_window = deque(maxlen=3)
+rpm_window = deque(maxlen=3)
+last_valid_speed = 0.0
+last_valid_rpm = 0.0
+last_motion_update = time.time()
 
 def write_value(name, value):
     """Update in-memory telemetry value with numeric coercion guard."""
@@ -46,6 +57,44 @@ def publish_latest(sock, target):
     """Publish latest telemetry snapshot to API bridge over localhost UDP."""
     payload = json.dumps(latest_data, separators=(',', ':'))
     sock.sendto(payload.encode('utf-8'), target)
+
+def stabilize_motion(speed_in, rpm_in, now):
+    """Suppress CAN bit-flip spikes while preserving normal response."""
+    global last_valid_speed, last_valid_rpm, last_motion_update
+
+    speed_window.append(speed_in)
+    rpm_window.append(rpm_in)
+
+    speed_candidate = min(float(median(speed_window)), MAX_SPEED_KMPH)
+    rpm_candidate = max(-MAX_RPM, min(float(median(rpm_window)), MAX_RPM))
+
+    dt = max(now - last_motion_update, 0.001)
+    max_speed_step = MAX_SPEED_SLEW_KMPH_PER_S * dt
+    max_rpm_step = MAX_RPM_SLEW_PER_S * dt
+
+    speed_delta = speed_candidate - last_valid_speed
+    if abs(speed_delta) > max_speed_step:
+        speed_candidate = last_valid_speed + (max_speed_step if speed_delta > 0 else -max_speed_step)
+
+    rpm_delta = rpm_candidate - last_valid_rpm
+    if abs(rpm_delta) > max_rpm_step:
+        rpm_candidate = last_valid_rpm + (max_rpm_step if rpm_delta > 0 else -max_rpm_step)
+
+    # Reject sudden near-2x single-step jumps typical of bit flips.
+    if last_valid_speed > 5.0:
+        ratio_speed = speed_candidate / last_valid_speed
+        if SPIKE_RATIO_LOW <= ratio_speed <= SPIKE_RATIO_HIGH:
+            speed_candidate = last_valid_speed
+
+    if abs(last_valid_rpm) > 400.0:
+        ratio_rpm = abs(rpm_candidate) / abs(last_valid_rpm)
+        if SPIKE_RATIO_LOW <= ratio_rpm <= SPIKE_RATIO_HIGH:
+            rpm_candidate = last_valid_rpm
+
+    last_valid_speed = max(0.0, min(speed_candidate, MAX_SPEED_KMPH))
+    last_valid_rpm = max(-MAX_RPM, min(rpm_candidate, MAX_RPM))
+    last_motion_update = now
+    return last_valid_speed, int(round(last_valid_rpm))
 
 
 # --- CAN Setup ---
@@ -103,8 +152,8 @@ def parse_can(msg):
         rpm_raw   = decode_le(d[4:6], signed=True)                    # RPM: signed (negative = reverse)
         mtemp = decode_le(d[6:8], signed=True)                    # Motor temp: signed °C
 
-        speed = min(speed_raw, MAX_SPEED_KMPH)
-        rpm = max(-MAX_RPM, min(rpm_raw, MAX_RPM))
+        now = time.time()
+        speed, rpm = stabilize_motion(speed_raw, rpm_raw, now)
 
         write_value("motor_pwr",     pwr)
         write_value("vehicle_speed", round(speed, 2))
@@ -115,7 +164,6 @@ def parse_can(msg):
             write_value("motor_temp", mtemp)
 
         # Odometer
-        now = time.time()
         total_distance_km += speed * ((now - last_time) / 3600.0)
         last_time = now
         write_value("total_distance", total_distance_km)
