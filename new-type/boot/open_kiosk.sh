@@ -8,7 +8,7 @@ start_backend_if_missing() {
     local script="$1"
     local log_file="$2"
 
-    if ! pgrep -f "$script" >/dev/null 2>&1; then
+    if ! pgrep -f "python3 $script" >/dev/null 2>&1; then
         nohup python3 "$WORKDIR/$script" >> "$WORKDIR/logs/$log_file" 2>&1 &
         sleep 0.2
     fi
