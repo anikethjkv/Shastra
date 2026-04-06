@@ -422,10 +422,10 @@
             prev.spd = spdRound;
         }
 
-        /* Battery / SOC — voltage-based: 60V = 0%, 84V = 100% */
+        /* Battery / SOC — voltage-based: 60V = 0%, 82V = 100% */
         const battV = parseFloat(d.bms_total_voltage || d.batt_v || 0);
         const soc   = battV >= 60
-            ? Math.round(Math.min(100, Math.max(0, (battV - 60) / 24 * 100)))
+            ? Math.round(Math.min(100, Math.max(0, (battV - 60) / 22 * 100)))
             : 0;
         setText(el.hvsVoltage, battV.toFixed(0) + 'V');
         setText(el.socPct, soc + '%');

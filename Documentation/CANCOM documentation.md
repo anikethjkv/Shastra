@@ -13,7 +13,7 @@ INT -> GPIO25 (Pin 22)
 VA -> 3V
 VB -> 5V
 OE -> Active-High (5V)
-
+re-
 # Configuration in ASI App
 CAN ID - 40
 Baud Rate - 500KBPS
